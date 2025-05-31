@@ -17,6 +17,11 @@ wikipedia-fpw が GPL なのでライセンスを引き継いでいますが、�
 
 ## 実行方法
 
+* イメージのビルド（基本１回行えばOK）
+    ```shell
+    docker-compose build
+    ```
+
 * Wiktionary 用 wikipedia-fpw 環境のコンテナ起動
     ```shell
     docker-compose run --rm wiktionary
@@ -24,19 +29,19 @@ wikipedia-fpw が GPL なのでライセンスを引き継いでいますが、�
 
 * Wiktionary の xml ダウンロード＆変換実行
     ```shell
-    ./run.sh
+    bash ./run.sh
     ```
     WIKTION/ として EPWING 辞書作成します。
     wikipedia.xml もダウンロードしますが、ダウンロード済みなら変換のみ実行します。
 
 * fpwmake clean の実行
     ```shell
-    ./run.sh clean
+    bash ./run.sh clean
     ```
     wikipedia.xml は削除しません。
     再度ダウンロードする時は直接 wikipedia-fpw/ にある wikipedia.xml を削除してください。
 
 * fpwmake archive の実行
     ```shell
-    ./run.sh archive
+    bash ./run.sh archive
     ```

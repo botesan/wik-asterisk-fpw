@@ -1,3 +1,5 @@
+#!/bin/bash
+
 FPW_DIR=wikipedia-fpw
 XML_FILE=$FPW_DIR/wikipedia.xml
 DIC_ZIP_FILE=$FPW_DIR/wikipedia-fpw.zip

@@ -454,9 +454,9 @@ sub register_content {
 
       if ($text !~ /<math (.+)>/) {
 ##### M.ITO ( DEBUG #####
-        if ($text =~ /<\@([^:\@>]+)((:|\@)[^\@]+)?\@>/) {
-          print "found not replace template = " . $text . "\n";
-        }
+        # if ($text =~ /<\@([^:\@>]+)((:|\@)[^\@]+)?\@>/) {
+        #   print "found not replace template = " . $text . "\n";
+        # }
 ##### M.ITO ) DEBUG #####
 	$$fpwtext->add_text(utf2euc($text))
 	    || register_content_error ($fpwtext, $heading, $content, $formatted_content);
