@@ -1,0 +1,326 @@
+#                                                         -*- Perl -*-
+# Copyright (c) 2009  Kazuhiro Ito
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+
+require 5.005;
+
+use English;
+use FreePWING::ColorGraphic;
+use FreePWING::FPWUtils::FPWUtils;
+use Getopt::Long;
+use warnings;
+use FileHandle;
+
+use vars qw(%fpwwikipedia_conf);
+require "wikipedia-fpw.conf";
+
+if ($fpwwikipedia_conf{'enable_math'}) {
+  require Image::Magick;
+}
+
+use vars qw (%entity_table);
+use vars qw (%utf2euc_table);
+use vars qw ($utf2euc_regexp);
+require "tables";
+
+use vars qw($entry_headings $hash_module);
+
+require "fpwwikipedia_common";
+
+ MAIN: {
+   my $time = time;
+#
+# コマンド行を解析する。
+#
+   my $wikipedia_filename;
+
+   if (!GetOptions('workdir=s' => \$work_directory, 
+		   'srcfile=s' => \$wikipedia_filename,
+		   'hash_module=s' => \$hash_module)) {
+     exit 1;
+   }
+
+#
+# fpwutils を初期化する。
+#
+   initialize_fpwutils();
+
+#
+# これから出力するファイルがすでにあれば、削除する。
+#
+   unlink($color_graphic_file_name);
+   unlink($color_graphic_tag_file_name);
+
+   $graphic = FreePWING::ColorGraphic->new();
+
+#
+# 生成側ファイルを開く。
+#
+   if (!$graphic->open($color_graphic_file_name,
+		       $color_graphic_tag_file_name)) {
+     die "$PROGRAM_NAME: " . $graphic->error_message() . "\n";
+   }
+
+   if($fpwwikipedia_conf{'enable_math'} == 0) {
+     goto FINISH;
+   }
+
+#
+# 入力ファイルを開く。
+#
+   get_entry_headings('entries');
+
+   if (not -e $wikipedia_filename) {
+     die("$PROGRAM_NAME: '$wikipedia_filename' does not exist.");
+   }
+
+   my $xml = FileHandle->new();
+   if (!$xml->open($wikipedia_filename, 'r')) {
+     die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $wikipedia_filename\n";
+   }
+
+   my ($text, $heading);
+   my ($text_position, $heading_position);
+
+   if(verbose_mode ()) {
+     print "Skipping headers: $fpwwikipedia_conf{'skip_heading'}\n";
+     print "Skipping contents: $fpwwikipedia_conf{'skip_content'}\n";
+     print "Selecting headers: $fpwwikipedia_conf{'select_heading'}\n";
+     print "Selecting contents: $fpwwikipedia_conf{'select_content'}\n";
+   }
+
+   my $entry_count = 0;
+   my @maths;
+   my %math;
+
+ PARSER: for (;;) {
+     $_ = '';
+     while (!(/<page>/)) {
+       $_ = $xml->getline();
+       if (!defined($_)) {
+	 last PARSER;
+       }
+     }
+
+     $text = $_;
+     
+     while (!(/<\/page>/)) {
+       $_ = $xml->getline();
+       if (!defined($_)) {
+	 die "$PROGRAM_NAME: Unexpected file end\n";
+       }
+       $text .= $_;
+     }
+
+     $text =~ /<title>([^<]+)<\/title>/;
+     $heading = $1;
+
+     # Skipping entries (for debug)
+     $page_count++;
+     if ($page_count <= $fpwwikipedia_conf{'skip_count'}) {
+       next;
+     }
+
+     if (!defined($entry_headings->get($heading))) {
+       if (verbose_mode()) {
+	 print "Skipping page: $heading.\n";
+       }
+       next;
+     }
+
+     print "Entry: $page_count; $heading\n";
+
+     # main functions.
+
+##### M.ITO ( #####
+#     @maths = get_maths($text);
+     @maths = get_maths($heading, $text);
+##### M.ITO ) #####
+
+     foreach $_ (@maths) {
+       if (!defined($math{$_})) {
+	 $math{$_} = 1;
+	 # print "math:".$_."\n";
+
+	 if (!$graphic->add_binary("math_$_", get_image(pack("H*", $_)))) {
+	   die "$PROGRAM_NAME: " . $graphic->error_message() . "\n";
+	 }
+       }
+     }
+
+     # Check number of entries (for debug)
+     $entry_count++;
+     if ($fpwwikipedia_conf{'entry_count'} > 0
+	 && $entry_count >= $fpwwikipedia_conf{'entry_count'}) {
+       last;
+     }
+   }
+
+   $entry_headings->close();
+   $xml->close();
+
+   printf ("%6d formulas ard registered.\n", $graphic->entry_count());
+
+ FINISH:
+   if (!$graphic->close()) {
+     die "$PROGRAM_NAME: " . $graphic->error_message() . "\n";
+   }
+
+   printf("$PROGRAM_NAME: Elapsed time     : %8dsec.\n", time - $time);
+   printf("$PROGRAM_NAME: Number of entries: %8d\n", $entry_count);
+
+#
+# fpwutils の後始末をする。
+#
+   finalize_fpwutils();
+
+   exit 0;
+}
+
+
+sub get_image {
+  my ($formula) = @_;
+  $formula =~ s/\n/ /g;
+  # Replace command unsupported by mimetex.
+  $formula =~ s/\\[lr][Vr]ert([^a-z]|$)/\\|$1/g;
+  $formula =~ s/\\boldsymbol([^a-z]|$)/\\mathbb$1/g;
+  $formula =~ s/\\cfrac([^a-z]|$)/\\frac$1/g;
+  $formula =~ s/\\colon([^a-z]|$)/:$1/g;
+  $formula =~ s/\\iff([^a-z]|$)/\\Longleftrightarrow$1/g;
+  $formula =~ s/\\infin([^a-z]|$)/\\infty$1/g;
+  $formula =~ s/\\isin([^a-z]|$)/\\in$1/g;
+  $formula =~ s/\\land([^a-z]|$)/\\wedge$1/g;
+  $formula =~ s/\\lor([^a-z]|$)/\\vee$1/g;
+  $formula =~ s/\\real([^a-z]|$)/\\Re$1/g;
+  $formula =~ s/\\scriptstyle([^a-z]|$)/\\normalsize$1/g;
+  # Below tags need to be replaced but not yet.
+  # \square \over \textbf
+
+  $formula =~ s/\\/\\\\/g;
+
+  my $mimetex = new FileHandle;
+  if (!$mimetex->open("$fpwwikipedia_conf{'mimetex'} -o -d \"$formula\"|")) {
+    die "$PROGRAM_NAME: failed to start mimetex, $ERRNO\n";
+  }
+  $mimetex->binmode();
+
+  my $image ='';
+  while ($_ = $mimetex->getline()) {
+    $image .= $_;
+  }
+  $mimetex->close();
+
+  my $new_image = Image::Magick->new(magick=>'gif');
+  if ($new_image->BlobToImage($image) != 1) {
+    print "Formula:$formula\n";
+    print "warning: blob conversion was failed.\n";
+    $new_image->BlobToImage(
+      # White gif image.
+      pack("C*",
+	   0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x10, 0x00,
+	   0x10, 0x00, 0x91, 0x00, 0x00, 0x00, 0x00, 0x00,
+	   0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00,
+	   0x00, 0x21, 0xf9, 0x04, 0x01, 0x00, 0x00, 0x02,
+	   0x00, 0x2c, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
+	   0x10, 0x00, 0x00, 0x02, 0x0e, 0x8c, 0x8f, 0xa9,
+	   0xcb, 0xed, 0x0f, 0xa3, 0x9c, 0xb4, 0xda, 0x8b,
+	   0xb3, 0x3e, 0x05, 0x00, 0x3b));
+  }
+
+  if ($fpwwikipedia_conf{'math_black'}) {
+    $new_image->Negate();
+    $new_image->Frame(geometry =>'2x2+0+0', fill=>'black');
+  } else {
+    $new_image->Frame(geometry =>'2x2+0+0', fill=>'white');
+  }
+
+  $new_image->Quantize(colorspace=>'gray');
+  return $new_image->ImageToBlob(magick=>'bmp', compression=>'RLE');
+}
+
+sub get_maths {
+##### M.ITO ( #####
+#  my ($text) =@_;
+  my ($heading, $text) = @_;
+##### M.ITO ) #####
+  my @texts;
+  my $level;
+
+  # Remove header and footer 
+  $text =~ s/^.*?<text( [^>]+)?>\s*//s;
+  $text =~ s/\s*<\/text>.*?$//s;
+
+  # Decode entitiy
+  $text = decode_entity($text);
+
+  # Remove html comment
+  if ($text =~ /<!--/) {
+    @texts = split(/(<!--|-->)/, $text);
+    $text ='';
+    $level = 0;
+    foreach $_ (@texts) {
+      if ($_ =~ /<!--/) {
+	$level = 1;
+      } elsif ($_ =~ /-->/) {
+	$level = 0;
+      } elsif ($level == 0) {
+	$text .= $_;
+      }
+    }
+  }
+
+  # Remove nowiki text
+  my $tmp = '';
+  while ($text =~ s/^(.*?)<(nowiki|source|pre)(?: [^>]*)?>(.*?)<\/\2>//s) {
+    $tmp .= "$1";
+  }
+  $text = $tmp . $text;
+
+##### M.ITO ( #####
+#  # Format supported templates.
+#  $text =~ s/\{\{[lL]ang\|[a-z-]+\|([^\}]+)\}\}/$1/g;
+#  $text =~ s/\{\{:利用者:Bcjp\/t\/fbp国内表_top\|[^\}]*\}\}/\{\|/g;
+#  $text =~ s/\{\{サッカー代表個人成績\|[^\}]+\}\}/\{\|/g;
+#  $text =~ s/\{\{lang-en-short\|([^\}]+)\}\}/英: $1/g;
+#  $text =~ s/\{\{IPA\|([^\}]+)\}\}/[$1]/g;
+  $text = replace_template($heading, $text);
+##### M.ITO ) #####
+ 
+  # Remove templates.
+  while ($text =~ s/\{{3}[^\{\}]*\}{3}//sg) {}
+  while ($text =~ s/\{\{[^\{\}]*\}\}//sg) {}
+
+  # Detect math formula
+  $tmp = '';
+  while ($text =~ s/^(.*?)<math( [^<>]*?)?>(.*?)<\/math>//s) {
+    $tmp .= "$1<math ".unpack('H*', $3).'>';
+  }
+  $text = $tmp . $text;
+
+  # Remove tables
+  if ($text =~ /\{\|/) {
+    $text = format_content_table($text);
+  }
+
+  # Remove html tables
+  if ($text =~ /<table/) {
+    $text = format_content_table_html($text);
+  }
+
+  my @results = ();
+  while ($text =~ s/.*?<math (.*?)>//s) {
+    push (@results, $1);
+  }
+
+  return @results;
+}
+

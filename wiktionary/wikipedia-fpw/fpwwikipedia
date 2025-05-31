@@ -1,0 +1,777 @@
+#                                                         -*- Perl -*-
+# Copyright (c) 2007-2009  Kazuhiro Ito
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+
+use strict;
+use warnings;
+use Getopt::Long;
+
+use English;
+use FreePWING::FPWUtils::FPWParser;
+use Encode qw/ from_to decode_utf8 encode_utf8/;
+use FileHandle;
+
+
+use vars qw(%fpwwikipedia_conf);
+require "wikipedia-fpw.conf";
+
+use vars qw (%entity_table);
+use vars qw (%utf2euc_table);
+use vars qw ($utf2euc_regexp);
+require "tables";
+
+use vars qw($entry_headings $hash_module);
+
+require "fpwwikipedia_common";
+
+
+ MAIN: {
+   my $time = time;
+   my $page_count = 0;
+   my $entry_count = 0;
+
+   my ($fpwtext, $fpwheading, $fpwword2, $fpwcopyright);
+   initialize_fpwparser('text' => \$fpwtext,
+			'heading' => \$fpwheading,
+			'word2' => \$fpwword2,
+			'copyright' => \$fpwcopyright);
+
+   if (!GetOptions('hash_module=s' => \$hash_module)) {
+     exit 1;
+   }
+
+   get_entry_headings('entries');
+
+   my $copyright_filename;
+   if ( $#ARGV < 1) {
+     die("$PROGRAM_NAME: Only a file ($ARGV[0]) is specified.");
+   }
+   $copyright_filename = $ARGV[$#ARGV];
+   register_copyright(\$fpwcopyright, $copyright_filename);
+
+
+   my $wikipedia_filename = $ARGV[0];
+
+   if (not -e $wikipedia_filename) {
+     die("$PROGRAM_NAME: '$wikipedia_filename' does not exist.");
+   }
+
+   my $xml = FileHandle->new();
+   if (!$xml->open("$wikipedia_filename", 'r')) {
+     die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $wikipedia_filename\n";
+   }
+
+   my ($text, $heading);
+   my ($text_position, $heading_position);
+
+   if(verbose_mode ()) {
+     print "Skipping headers: $fpwwikipedia_conf{'skip_heading'}\n";
+     print "Skipping contents: $fpwwikipedia_conf{'skip_content'}\n";
+     print "Selecting headers: $fpwwikipedia_conf{'select_heading'}\n";
+     print "Selecting contents: $fpwwikipedia_conf{'select_content'}\n";
+   }
+
+   PARSER: for (;;) {
+     $_ = '';
+     while (!(/<page>/)) {
+       $_ = $xml->getline();
+       if (!defined($_)) {
+	 last PARSER;
+       }
+     }
+
+     $text = $_;
+     
+     while (!(/<\/page>/)) {
+       $_ = $xml->getline();
+       if (!defined($_)) {
+	 die "$PROGRAM_NAME: Unexpected file end\n";
+       }
+       $text .= $_;
+     }
+
+     $text =~ /<title>([^<]+)<\/title>/;
+     $heading = $1;
+
+     # Skipping entries (for debug)
+     $page_count++;
+     if ($page_count <= $fpwwikipedia_conf{'skip_count'}) {
+       next;
+     }
+
+     if (!defined($entry_headings->get($heading))) {
+       if (verbose_mode()) {
+	 print "Skipping page: $heading.\n";
+       }
+       next;
+     }
+
+     # Workarounds
+#     if ($heading =~ /^Ruby$/) {
+#       $text =~ s/\{\|([^\|]*\|[^\}]+\})/<nowiki>{|<\/nowiki>$1/g;
+#     # Fixed at 2007/10/01
+#     } elsif ($heading =~ /^ネイチャーライティング$/) {
+#       $text =~ s/\|-\}/\|-\|\}/g;
+#     } elsif ($heading =~ /^大原めぐみ$/) {
+#       $text =~ s/ドラえもん\[\[Wii\]\]/ドラえもんWii/;
+#     } elsif ($heading =~ /^岩田正太$/) {
+#       $text =~ s/JaSRAサッカークラ\*2007年- \[\[ザスパ草津\]\]\nブ\]\]/JaSRAサッカークラブ]]\n/;
+#      # Fixed at 2007/08/22
+#      } elsif ($heading =~ /^予算$/) {
+#        $text =~ s/\[\[s:地方自治法 第二編 第九章 財務#211\|地方自治法第211条）/[[s:地方自治法 第二編 第九章 財務#211|地方自治法第211条]]）/;
+#      # Fixed at 2007/08/21
+#      } elsif ($heading =~ /^加茂田重政$/) {
+#        $text =~ s/\[\[加茂田組\|加茂田会\}\}/[[加茂田組|加茂田会]]/;
+#      } elsif ($heading =~ /^石川県の廃止市町村一覧$/) {
+#        $text =~ s/\[\[三谷村 \(石川県河北郡\)\|新設の為/[[三谷村 (石川県河北郡)|三谷村]]新設の為/;
+#      } elsif ($heading =~ /^ドメインハック$/) {
+#        $text =~ s/\[\[バーナー\|ウェブバーナー\]の/[[ウェブバーナー|バーナー]]の/;
+#      } elsif ($heading =~ /^チャールストン \(サウスカロライナ州\)$/) {
+#        $text =~ s/\[\[:en:University of Illinois Press\|U. of Illinois Press, /[[:en:University of Illinois Press|U. of Illinois Press]], /;
+#        $text =~ s/\[\[:en:University Press of Mississippi\|U. Press of Mississippi, /[[:en:University Press of Mississippi|U. Press of Mississippi]], /;
+#      # Fixed at 2007/07/09
+#      } elsif ($heading =~ /^単位一覧$/) {
+#        $text =~ s/(<sup>229376<\/sup>\n\|)-/$1\}/g;
+#     }
+
+
+     print "Entry: $page_count; $heading\n";
+     $heading_position = register_heading(\$fpwheading, $heading);
+     $text_position = register_content(\$fpwtext, $heading, $text);
+     my @headings = expand_search_entry($heading, $text);
+     register_search_entry(\$fpwword2, \@headings, $heading_position, $text_position);
+
+     # Check number of entries (for debug)
+     $entry_count++;
+     if ($fpwwikipedia_conf{'entry_count'} > 0
+	 && $entry_count >= $fpwwikipedia_conf{'entry_count'}) {
+       last;
+     }
+   }
+
+   $entry_headings->close();
+   $xml->close();
+
+   finalize_fpwparser('text' => \$fpwtext,
+		      'heading' => \$fpwheading,
+		      'word2' => \$fpwword2,
+		      'copyright' => \$fpwcopyright);
+   
+   printf("$PROGRAM_NAME: Elapsed time     : %8dsec.\n", time - $time);
+   printf("$PROGRAM_NAME: Number of entries: %8d\n", $entry_count);
+}
+
+
+sub register_copyright {
+  my ($fpwcopyright, $filename) = @_;
+  my $handle = FileHandle->new();
+
+  if (!$handle->open($filename, 'r')) {
+    die "$PROGRAM_NAME: failed to open the file, $filename\n";
+  }
+
+  if(verbose_mode ()) {
+    print "Copyright notice: $filename.\n";
+  }
+
+  $_ = $handle->getline();
+  for (; defined($_); $_ = $handle->getline()) {
+    ($$fpwcopyright->add_text($_)
+     && $$fpwcopyright->add_newline())
+	||  die "$PROGRAM_NAME: " . $$fpwcopyright->error_message() . "\n";
+  }
+
+  $handle->close();
+}
+
+sub register_heading {
+  my ($fpwheading, $heading) = @_;
+  
+  $heading = utf2euc(decode_entity($heading));
+  $$fpwheading->new_entry()
+      || die "$PROGRAM_NAME: " . $$fpwheading->error_message() . "\n";
+  $$fpwheading->add_text($heading)
+      || die "$PROGRAM_NAME: " . $$fpwheading->error_message() . "\n";
+  return $$fpwheading->entry_position();
+}
+
+sub trim_key {
+  my $str = $_[0];
+  $str =~ s/(^([\x80-\xff][\x80-\xff]|[\x20-\x7f]){1,127}).*$/$1/o;
+  return $str;
+}
+
+sub register_search_entry {
+  my ($fpwword2, $keys, $heading, $text) = @_;
+  my $key;
+
+  if (verbose_mode()) {
+    print "Entry key: ";
+  }
+
+  foreach $key (@$keys) {
+    if ($key =~ /^(\xA1\xA1| |\xA1\xC7|\'|\xA1\xDD|-|\xA1\xA6|\xA1\xBE)+$/) {
+      next;
+    }
+
+    if ($fpwwikipedia_conf{'trim_long_index'}) {
+      $key = trim_key($key);
+    }
+
+    if(verbose_mode()) {
+      my $tmp = $key;
+      from_to($tmp, 'euc-jp', 'utf-8');
+      print "$tmp ";
+    }
+
+    $$fpwword2->add_entry($key, $heading, $text)
+	|| die "$PROGRAM_NAME: " . $$fpwword2->error_message() . "\n";
+  }
+
+  if(verbose_mode()) {
+    print "\n";
+  }
+}
+
+sub utf2euc {
+  my ($text) = @_;
+
+  $text =~ s/$utf2euc_regexp/$utf2euc_table{$1}/g;
+
+  from_to($text, 'utf-8', 'euc-jp');
+  # $text =~ s/\x8F[\xA1-\xFE][\xA1-\xFE]|\x8E[\xE0-\xFE]/?/g;
+  $text =~ s/\x8F[\xA1-\xFE][\xA1-\xFE]/?/g;
+
+  # Workaround
+  $text =~ s/\x7f/?/g;
+
+  return $text;
+}
+
+
+sub register_content {
+  my ($fpwtext, $heading, $content) = @_;
+  my $formatted_content;
+  my $converted_heading = utf2euc(decode_entity($heading));
+  
+  ($$fpwtext->new_entry()
+   && $$fpwtext->add_entry_tag(unpack('H*', $heading))
+   && $$fpwtext->add_keyword_start()
+   && $$fpwtext->add_text($converted_heading)
+   && $$fpwtext->add_keyword_end()
+   && $$fpwtext->add_newline()
+   && $$fpwtext->add_indent_level(2))
+      || die "$PROGRAM_NAME: " . $$fpwtext->error_message() . "\n";
+
+  # $formatted_content = decode_entity(format_content($heading, $content));
+  $formatted_content = format_content($heading, $content);
+
+  # print "$formatted_content\n";
+  
+  my ($text, @texts);
+
+  @texts = split(/(<\/?[^<>]+>)/, $formatted_content);
+  
+  my $indent_level = 2;
+  my $indent_last  = 2;
+  my $last_ref = '';
+  my $tmp;
+  my %reference_hash = ();
+
+  my $tag_level = 0;
+  my $sub_level = 0;
+  my $sup_level = 0;
+  my @tags = ();
+  my $written_level = 0;
+  my $ref_level = 0;
+##### M.ITO ( #####
+  my $text_count = 0;
+##### M.ITO ) #####
+
+  foreach $text (@texts) {
+
+    if (!length($text)) {
+      next;
+    }
+##### M.ITO ( DEBUG #####
+  # if ($heading =~ /^ダイヤモンド$/) {
+  #   print "foreach indent_level=" . $indent_level . ":" . $text . "\n";
+  # }
+##### M.ITO ) DEBUG #####
+##### M.ITO ( #####
+    $text_count++;
+##### M.ITO ) #####
+    if  ($text eq '<IND>') {
+      if ($indent_level < 6) {
+	$indent_level++;
+      }
+    } elsif ($text =~ /^<(BR|\/?(H|DT|DD))>/) {
+      # In reference, don't output newline.
+      if ($ref_level) {
+	next;
+      }
+
+      # Write closing tags.
+      for (; $written_level >= 1; $written_level--) {
+ 	if ($written_level == $sup_level) {
+	  $$fpwtext->add_superscript_end()
+	      || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+ 	} elsif ($written_level == $sub_level) {
+	  $$fpwtext->add_subscript_end()
+	      || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+ 	}
+      }
+      $sup_level = 0;
+      $sub_level = 0;
+      $tag_level = 0;
+
+##### M.ITO ( #####
+#      $$fpwtext->add_newline()
+#	  || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+      if($text eq '</H>')  {
+        $$fpwtext->add_emphasis_end()
+            || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+      }
+      if($text_count > 1) {
+        $$fpwtext->add_newline()
+            || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+      000}
+##### M.ITO ) #####
+      $indent_level = 2;
+##### M.ITO ( #####
+      if($text eq '<H>')  {
+        $$fpwtext->add_emphasis_start()
+            || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+      }
+##### M.ITO ) #####
+    } elsif ($text =~ /^<R (.+)>$/) {
+      if (defined($entry_headings->get($1))
+	  && ($fpwwikipedia_conf{'enable_reference'} == 1
+	      || !defined($reference_hash{$1}))) {
+	$last_ref = $1;
+	$reference_hash{$1} = 1;
+	$tags[$tag_level] = 'R';
+	$tag_level++;
+	$ref_level = $tag_level;
+      }
+    } elsif ($text eq '</R>') {
+      if (!length($last_ref)) {
+	next;
+      }
+
+      #write inner closing tags.
+      for (;$tag_level > $ref_level; $tag_level--) {
+	if ($tag_level == $sup_level) {
+	  $sup_level = 0;
+	  if ($tag_level <= $written_level) {
+	    $$fpwtext->add_superscript_end()
+		|| register_content_error ($fpwtext, $heading, $content, $formatted_content);
+	  }
+	} elsif ($tag_level == $sub_level) {
+	  $sub_level = 0;
+	  if ($tag_level <= $written_level) {
+	    $$fpwtext->add_subscript_end()
+		|| register_content_error ($fpwtext, $heading, $content, $formatted_content);
+	  }
+	}
+      }
+
+      if ($tag_level <= $written_level) {
+	$$fpwtext->add_reference_end(unpack("H*", $last_ref))
+	    || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+      }
+
+      $ref_level = 0;
+      $last_ref = '';
+      $tag_level--;
+      $written_level = ($written_level > $tag_level) ? $tag_level : $written_level;
+    } elsif ($text eq '<sup>') {
+      $tags[$tag_level] = 'S';
+      $tag_level++;
+      $sup_level = ($sup_level == 0) ? $tag_level : $sup_level;
+    } elsif ($text eq '<sub>') {
+      $tags[$tag_level] = 'S';
+      $tag_level++;
+      $sub_level = ($sub_level == 0) ? $tag_level : $sub_level;
+    } elsif ($text =~ /<\/su[bp]>/) {
+      # MediaWiki allows closing <sub> tag with </sup> tag.
+      if ($sub_level && $tag_level == $sub_level) {
+	$tag_level--;
+	$sub_level = 0;
+	if ($tag_level < $written_level) {
+	  $$fpwtext->add_subscript_end()
+	      || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+	  $written_level--;
+	}
+      } elsif ($sup_level && $tag_level == $sup_level) {
+ 	$tag_level--;
+ 	$sup_level = 0;
+	if ($tag_level < $written_level) {
+ 	  $$fpwtext->add_superscript_end()
+ 	      || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+	  $written_level--;
+ 	}
+      } elsif ($tag_level && $tags[$tag_level - 1] eq 'S') {
+	$tag_level--;
+	$written_level = ($written_level > $tag_level) ? $tag_level : $written_level;
+      }
+    } elsif ($text =~ /^\n+$/) {
+    } else {
+      if ($indent_level != $indent_last) {
+	$indent_last = $indent_level;
+##### M.ITO ( DEBUG #####
+        # if ($heading =~ /^ダイヤモンド$/) {
+        #   print "add_indent_level indent_level=" . $indent_level . ":" . $text . "\n";
+        # }
+##### M.ITO ) DEBUG #####
+	$$fpwtext->add_indent_level ($indent_last)
+	    || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+      }
+
+      # Write opening tags.
+      while ($written_level < $tag_level) {
+	$written_level++;
+	if ($written_level == $sup_level) {
+	  $$fpwtext->add_superscript_start()
+	      || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+	} elsif ($written_level == $sub_level) {
+	  $$fpwtext->add_subscript_start()
+	      || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+	} elsif ($written_level == $ref_level) {
+	  $$fpwtext->add_reference_start()
+	      || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+	}
+      }
+
+      if ($text !~ /<math (.+)>/) {
+##### M.ITO ( DEBUG #####
+        if ($text =~ /<\@([^:\@>]+)((:|\@)[^\@]+)?\@>/) {
+          print "found not replace template = " . $text . "\n";
+        }
+##### M.ITO ) DEBUG #####
+	$$fpwtext->add_text(utf2euc($text))
+	    || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+      } elsif ($fpwwikipedia_conf{'enable_math'}) {
+	$$fpwtext->add_inline_color_graphic_start("math_$1")
+	    # && $$fpwtext->add_text("[math]")
+	    && $$fpwtext->add_inline_color_graphic_end()
+	    || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+      }
+    }
+  }
+
+  # Write closing tags.
+  for (; $written_level >= 1; $written_level--) {
+    if ($written_level == $sup_level) {
+      $$fpwtext->add_superscript_end()
+	  || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+      $sup_level = 0;
+    } elsif ($written_level == $sub_level) {
+      $$fpwtext->add_subscript_end()
+	  || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+      $sub_level = 0;
+    }
+  }
+  $$fpwtext->add_newline()
+      || register_content_error ($$fpwtext, $heading, $content, $content);
+  
+  return $$fpwtext->entry_position();
+}
+
+sub format_content {
+  my ($heading, $text) =@_;
+  my @texts;
+  my $level;
+
+
+
+  # Remove header and footer 
+  $text =~ s/^.*?<text( [^>]+)?>\s*//s;
+  $text =~ s/\s*<\/text>.*?$//s;
+
+  # Decode entitiy
+  $text = decode_entity($text);
+
+  # Remove html comment
+  if ($text =~ /<!--/) {
+    @texts = split(/(<!--|-->)/, $text);
+    $text ='';
+    $level = 0;
+    foreach $_ (@texts) {
+      if ($_ =~ /<!--/) {
+	$level = 1;
+      } elsif ($_ =~ /-->/) {
+	$level = 0;
+      } elsif ($level == 0) {
+	$text .= $_;
+      }
+    }
+  }
+
+  # Backup nowiki text
+  my $tmp = '';
+  my $tmp2;
+  my @f_texts;
+  my $f_texts_count = 0;
+  while ($text =~ s/^(.*?)<(nowiki|source|pre)(?: [^>]*)?>(.*?)<\/\2>//s) {
+    $tmp .= "$1<F_TEXTS $f_texts_count>";
+    $f_texts[$f_texts_count] = $3;
+    $f_texts[$f_texts_count] =~ s/\n/<BR>\n/g;
+    $f_texts_count++;
+  }
+  $text = $tmp . $text;
+
+##### M.ITO ( #####
+#  # Format supported templates.
+#  $text =~ s/\{\{[lL]ang\|[a-z-]+\|([^\}]+)\}\}/$1/g;
+#  $text =~ s/\{\{:利用者:Bcjp\/t\/fbp国内表_top\|[^\}]*\}\}/\{\|/g;
+#  $text =~ s/\{\{サッカー代表個人成績\|[^\}]+\}\}/\{\|/g;
+#  $text =~ s/\{\{lang-en-short\|([^\}]+)\}\}/英: $1/g;
+#  $text =~ s/\{\{IPA\|([^\}]+)\}\}/[$1]/g;
+  $text = replace_template($heading, $text);
+##### M.ITO ) #####
+##### M.ITO ( DEBUG #####
+  # if ($heading =~ /^わたし$/) {
+  #   print $text . "\n";
+  #   die "DEBUG $heading\n";
+  # }
+##### M.ITO ) DEBUG #####
+
+  # Remove templates.
+  while ($text =~ s/\{{3}[^\{\}]*\}{3}//sg) {}
+  while ($text =~ s/\{\{[^\{\}]*\}\}//sg) {}
+
+  if ($fpwwikipedia_conf{'enable_math'} == 0) {
+    # Remove gallery and math
+    $text =~ s/<(gallery|math)>.*?<\/\1>//sg;
+  } else {
+    # Detect math formula
+    $tmp = '';
+    while ($text =~ s/^(.*?)<math( [^<>]*?)?>(.*?)<\/math>//s) {
+      $tmp2 = $3;
+      $tmp2 =~ s/<F_TEXTS ([0-9]+)>//g;
+      $tmp .= "$1<_math ".unpack('H*', $tmp2).'>';
+    }
+    $text = $tmp . $text;
+
+    # Remove gallery
+    $text =~ s/<gallery>.*?<\/gallery>//sg;
+  }
+
+  # Remove tables
+  if ($text =~ /\{\|/) {
+    $text = format_content_table($text);
+  }
+
+##### M.ITO ( #####
+  # Remove html tables
+  if ($text =~ /<table/) {
+    $text = format_content_table_html($text);
+  }
+##### M.ITO ) #####
+
+  # Backup pre-formatted text
+  my @p_texts;
+  my $p_texts_count = 0;
+  if ($text =~ /^ /m) {
+    $tmp = '';
+    foreach $_ (split(/\n/, $text)) {
+      if ($_ =~ /^ /) {
+	$tmp .= "<P_TEXTS $p_texts_count>";
+	$p_texts[$p_texts_count] = "$_<BR>\n";
+	$p_texts_count++;
+      } else {
+	$tmp .= "$_\n";
+      }
+    }
+    $text = $tmp;
+  }
+
+  # Remove TOC
+  $text =~ s/__(NO)?TOC__//;
+
+##### M.ITO ( #####
+#  # Remove html tables
+#  if ($text =~ /<table/) {
+#    $text = format_content_table_html($text);
+#  }
+##### M.ITO ) #####
+
+  # Format footnote
+  $text =~ s/<ref>(.*?)<\/ref>/ \($1\) /sg;
+
+  #format superscript/subscript.
+  $text =~ s/(<\/?)(su[bp]>)/$1_$2/g;
+
+  $text =~ s/<br\s*\/?>/<_BR>/g;
+
+  # Remove xhtml tags
+  $text =~ s/<\/?[a-z]+( [^<>]*|\/)?>//gi;
+
+  # Recover generated tags.
+  $text =~ s/(<\/?)_/$1/g;
+
+  # Recover pre formatted texts
+  $text =~ s/<P_TEXTS ([0-9]+)>/$p_texts[$1]/g;
+
+  # Remove links to other languages.
+  $text =~ s/\[\[[a-z-]+:[^\[\]\|]+\]\]//g;
+
+##### M.ITO ( #####
+  # Remove links to media data.
+  $text =~ s/\n*\[\[(?:media|image|file|category|画像|音声|ファイル|カテゴリ):([^\[\]]|\[\[[^\[\]]+\]\])+\]\]//gi;
+##### M.ITO ) #####
+
+  # Format links to articles in other languages.
+  # $text =~ s/\[\[:[a-z-]+:([^\[\]\|]+)\]\]/$1/g;
+  $text =~ s/\[\[:?[a-z-]+:(?:[^\[\]\|]+\|)?([^\[\]\|]+)\]\]/$1/g;
+
+##### M.ITO ( #####
+#  # Remove links to media data.
+#  $text =~ s/\n*\[\[(?:media|image|画像|category):([^\[\]]|\[\[[^\[\]]+\]\])+\]\]//gi;
+##### M.ITO ) #####
+
+  # Format subheadings.
+  my @heading_symbol = ('', '', '■', '□', '○', '・', '');
+
+##### M.ITO ( #####
+#  $text =~ s/^(={2,6}) *((=?[^=])+?) *\1$/<H>$heading_symbol[length($1)]$2<\/H>/mg;
+  $text =~ s/^(={2,6}) *((=?[^=])+?) *\1 *$/<H>$heading_symbol[length($1)]$2<\/H>/mg;
+##### M.ITO ) #####
+
+  # Format pre-formatted text
+  $text =~ s/^ /<IND>/mg;
+
+  # Format definitions
+  $text =~ s/^;(.+?) :(.*)/<DT>$1<\/DT>\n<DD>$2<\/DD>/mg;
+  $text =~ s/^;(.+?\]\]):(.*)/<DT>$1<\/DT>\n<DD>$2<\/DD>/mg;
+  $text =~ s/^;(.*)/<DT>$1<\/DT>/mg;
+
+  # Format indents
+
+  # while ($text =~ s/^(:*):/$1<IND>/mg) {}
+  $text =~ s/^(:+)/'<IND>' x length($1)/mge;
+
+  # Format itemize
+  
+  # while ($text =~ s/^([*\#]*)([*\#])((<IND>)*)/$1<IND>$3$2/mg) {}
+  $text =~ s/^([*\#]+)/'<IND>' x length($1)/mge;
+
+  $text =~ s/^(<IND>.*)$/$1<BR>/mg;
+ 
+  # Format links to other articles
+  if ($fpwwikipedia_conf{'enable_reference'}) {
+    $text =~ s/\[\[([^\[\]\|\#]+?)(?:\#[^\[\]\|\#]+)?\|(([^\[\]\|]|\[[^\[\]]|\][^\]])+)\]\]/<R $1>$2<\/R>/g;
+    $text =~ s/\[\[([^\[\]\|\#]+?)(?:\#[^\[\]\|\#]+)?\]\]/<R $1>$1<\/R>/g;
+  } else {
+    $text =~ s/\[\[([^\[\]\|\#]+?)(?:\#[^\[\]\|\#]+)?\|(([^\[\]\|]|\[[^\[\]]|\][^\]])+)\]\]/$2/g;
+    $text =~ s/\[\[([^\[\]\|\#]+?)(?:\#[^\[\]\|\#]+)?\]\]/$1/g;
+  }
+
+   # Format links to self page.
+  $text =~ s/\[\[\#[^\[\]\|\#]+\|(([^\[\]\|]|\[[^\[\]]|\][^\]])+)\]\]/$1/g;
+  $text =~ s/\[\[\#([^\[\]\|\#]+)\]\]/$1/g;
+
+  # Format emphasis
+  $text =~ s/'{2,}//g; 
+
+##### M.ITO ( DEBUG #####
+  # if ($heading =~ /^ダイヤモンド$/) {
+  #   print $text . "\n";
+  #   die "DEBUG $heading\n";
+  # }
+##### M.ITO ) DEBUG #####
+
+  # Format LFs
+##### M.ITO ( #####
+  # $text =~ s/^(?:<IND>)*\s*<BR>$/<BR>/mg;
+  $text =~ s/^(?:<IND>)*(?:\s*<BR>)+$/<BR>/mg;
+##### M.ITO ) #####
+
+  $text =~ s/(?:\n{2,})/<BR>\n/g;
+  $text =~ s/(?:<BR>\n?)*\n(<(H|DT|IND))/<BR>\n$1/g;
+  $text =~ s/(<\/(H|DT)>)\n?(?:<BR>\n?)+/$1\n/g;
+
+  $text =~ s/^(?:<BR>|\s)+//g;
+  $text =~ s/(?:<BR>|\s)+$//g;
+
+  $text = decode_entity($text);
+
+  # Recover nowiki texts
+  $text =~ s/<F_TEXTS ([0-9]+)>/$f_texts[$1]/g;
+
+  # print "Formatted_Content: $text\n";
+##### M.ITO ( DEBUG #####
+  # if ($heading =~ /^ダイヤモンド$/) {
+  #   print $text . "\n";
+  #   die "DEBUG $heading\n";
+  # }
+##### M.ITO ) DEBUG #####
+  return $text;
+}
+
+sub register_content_error {
+  my ($fpwtext, $heading, $content, $formatted_content) = @_;
+
+  print '$PROGRAM_NAME:  '.$$fpwtext->error_message()."\n";
+  print "Heading: $heading\n";
+  print "Content: $content\n";
+  print "Formatted_content: $formatted_content\n";
+  die;
+}
+
+sub expand_search_entry {
+  my ($key, $text) = @_;
+  my @keys = ($key);
+  my @tmp = ();
+  my @results = ();
+  my $heading;
+
+  # Expand search entry by yomigana
+  if ($fpwwikipedia_conf{'yomigana'}) {
+    my $regexp = decode_utf8("^([\\p{InHiragana}\\p{InKatakana}－ -]+)");
+
+    if ($text =~ /'''[^']+?'''(?:』)?(?:　| )*（(?:''')?(.+?)）/) {
+      if (decode_utf8($1) =~ /$regexp/) {
+	push(@keys, encode_utf8($1));
+      }
+    }
+  }
+
+  # Expand search entry by redirect
+  if (length($entry_headings->get($key))) {
+    push (@keys, split(/\t/, $entry_headings->get($key))); 
+  }
+
+  # Expand search entry from heading
+  foreach  $heading (@keys) {
+    push (@tmp, $heading);
+
+    if ($heading =~ /^(.+)[ \t]+\(?:.*\)$/) {
+      push (@tmp, $1);
+    }
+
+    if ($heading =~ /^[^ \t]+:(.+$)/) {
+      push (@tmp, $1);
+    }
+  }
+  @keys = @tmp;
+  @tmp = ();
+
+  # Decode entity and characte references, and convert encoding
+  foreach  $heading (@keys) {
+    $heading = utf2euc(decode_entity($heading));
+    push (@results, $heading);
+  }
+
+  return uniq_array(@results);
+}

@@ -1,0 +1,9 @@
+[Catalog]
+FileName   = catalogs
+Type       = EPWING1
+Books      = 1
+
+[Book]
+Title      = "ウィクショナリー日本語版"
+BookType   = 5001
+Directory  = "WIKTION"

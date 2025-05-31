@@ -1,0 +1,233 @@
+2009-12-02  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* preparser (MAIN): Output correct redirect information.
+
+2009-10-12  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* WikipediaFpw/Hash/Hash.pm, WikipediaFpw/Hash/BDB.pm
+	* WikipediaFpw/Hash/GDBM.pm: New files.
+
+	* fpwwikipedia (MAIN, expand_search_entry): Many entries support
+	is enabled.
+	(get_entry_headings): Moved to fpwwikipedia_common.
+
+	* fpwwikipedia_cgraph (MAIN): Many entries support is enabled.
+	(get_entry_headings): Removed.
+
+	* fpwwikipedia_common (get_entry_headings): Moved from
+	fpwwikipedia.
+
+	* preparser: Many entries support is enabled.
+
+	* README: Add information about many entries support.
+
+2009-10-02  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia (expand_search_entry): Decode entity and character
+	references.
+	(register_search_entry_internal): Surely removed.
+
+2009-08-31  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	Yomigana is supported.
+	cf. http://pc11.2ch.net/test/read.cgi/mobile/1205944629/
+
+	* README: Update requirements.
+
+	* fpwwikipedia (expand_search_entry): New function.
+	(MAIN): use it.
+	(register_search_entry_internal): Removed.
+	(register_search_entry): Receive expanded search keys.
+
+	* fpwwikipedia_common (decode_entity_internal): Renamed from
+	decode_utf8.
+	(decode_entity): Ditto.
+	(uniq_array): New function.
+
+	* wikipedia-fpw.conf (%fpwwikipedia_conf): New key 'yomigana' is
+	added.
+
+2009-04-28  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia_cgraph (get_maths): Change pack and unpack format
+	from "h*" to "H*".
+
+	* fpwwikipedia (register_content, format_content): Ditto.
+
+2009-04-28  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia (format_content): Remove F_TEXTS tags from math
+	formula.
+
+2009-02-20  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia (register_content): Do not insert alternate text
+	for inline math image.
+
+	* wikipedia-fpw.conf: Update comment.
+
+2009-01-26  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* tables (utf2euc_table): Add some characters.
+
+2009-01-05  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	Support math tags.
+	* fpwwikipedia_cgraph: New file.
+
+	* fpwwikipedia_common: New file.
+
+	* wikipedia-fpw.conf (%fpwwikipedia_conf): New keys 'enable_math',
+	'mimetex', and 'math_black' are added.
+	(@skip_headings): Add ファイル: namespace
+
+	* fpwwikipedia (MAIN, register_copyright): Close handle explicitly.
+	(register_content): Support math tags.
+	(format_content): Ditto.
+	(decode_entity, decode_utf8, format_content_table)
+	(format_content_table_html, format_content_warning): Moved to
+	fpwwikipedia_common.
+
+	* README: Update information for math tags.
+
+	* Makefile (${CGRAPH_DEP}): New overridden target.
+	(ARCHIVEEXTRA): Add fpwwikipedia_cgraph and fpwwikipedia_common.
+
+2008-11-26  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia (format_content): treat pre tags the same as nowiki
+	tags.
+	(format_content_pre): Removed.
+
+2008-11-22  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* tables (utf2euc_table): Add some characters.
+
+	* fpwwikipedia (format_content): Supported templates are added.
+
+2008-11-20  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia (format_content): Improve formatting pre-formatted
+	text.
+
+	* wikipedia-fpw.conf (is_redirect_page): Convert destination's
+	underscore to white space.
+
+2008-11-18  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	Support superscript / subscript.
+	* fpwwikipedia (register_content): Support sub and sup tags.
+	(format_content): Ditto.
+
+2008-10-31  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia (register_search_entry): Check content of extended
+	entry keys before register.
+
+	* wikipedia-fpw.conf (skip_headings): Adapt to above change.
+
+	* README: Update information about FreePWING.
+
+2008-06-16  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia: Update workarounds.
+	(format_content): Decode entity references.
+	Optimize to decrease times for regexp match or replace operation.
+	Support <source> tags.
+	(register_content): Adapt to chage of format_content.
+	(format_content_table, format_content_table_html): use eq
+	operation instead of regexp match.
+
+2008-05-28  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia (format_content): Remove trailing garbage.
+	(format_content_table, format_content_table_html): Optimize
+	regexps.
+	(register_content): Enabled to make only unique references.
+
+2008-04-28  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* README: Update information about FreePWING patched version.
+
+	* wikipedia-fpw.conf (skip_contents, select_headings)
+	(select_contents): New variables.
+	(concat_regexps, is_skipped_head, is_skipped_cont): New functions.
+
+	* preparser: Use new variables for page skipping and selecting.
+
+	* fpwwikipedia: Use $entry_headings for check of skipping.
+
+2007-12-02  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* README: Update information about storage and time requirement.
+
+2007-12-01  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* wikipedia-fpw.conf (skip_headings): Add entries for history and
+	help.
+
+2007-11-29  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia (format_content_table_html): New function.
+	(format_content): Use it.
+	(register_content): Change some regexps for bug and speed.
+
+2007-11-27  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia (register_content): Prevent redundant indent
+	information.
+
+2007-11-26  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia: Update workarounds.
+
+2007-09-27  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia (format_content): Detect references including anchor
+	text prior to ones not including.
+
+2007-09-25  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia: Add workaround and remove old ones.
+
+2007-08-22  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* README: Add information about perl on cgwin.
+
+	* fpwwikipedia: Add workaronud.
+
+2007-06-30  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia (decode_entity): Support numeric character
+	reference.
+	(decode_utf8): New function. Called from decode_entity.
+
+2007-06-28  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia (format_content): Fix misjudge links to self page.
+	(format_content_warning): Output to standard out.
+
+2007-06-25  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* wikipedia-fpw.conf: Allow redirect pages to contain following
+	other text.
+
+2007-06-24  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* fpwwikipedia: Add workaronud.
+	(utf2euc): Renamed from to_euc. Convert strings from utf-8 to
+	euc-jp only.
+	(format_content): Support pre and nowiki tag. Remove table more
+	correctly.
+	(format_content_pre): New function. Called from format_content.
+	(format_content_table): Ditto
+	(format_content_warning): New funtion.
+
+	* tables: Updated.
+
+	* preparser: Display entry count.
+	Support debug mode.
+
+2007-06-20  Kazuhiro Ito  <kzhr@d1.dion.ne.jp>
+
+	* Initial release.

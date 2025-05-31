@@ -1,0 +1,396 @@
+#                                                         -*- Perl -*-
+# Copyright (c) 2009  Kazuhiro Ito
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+
+sub decode_entity {
+  my $text = $_[0];
+  my @texts = split (/(&[0-9a-zA-Z]+;|&\#[0-9]+;|&\#x[0-9a-fA-F]+;)/, $text);
+
+  $text = '';
+  foreach $_ (@texts) {
+    if ($_ =~ /&([0-9a-zA-Z]+);/) {
+      if (defined($entity_table{$1})) {
+	$text .= $entity_table{$1};
+      } else {
+	$text .= '?';
+      }
+    } elsif ($_ =~ /&\#([0-9]+|x[0-9a-fA-F]+);/) {
+      $text .= decode_entitry_internal($1);
+    } else {
+      $text .= $_;
+    }
+  }
+
+  return $text;
+}
+
+sub decode_entitry_internal {
+  my $entity = $_[0];
+
+  if ($entity =~ /^x(.*)/) {
+    $entity = hex ($1);
+  }
+
+  if      ($entity & 0x7c000000) {
+    return
+	chr(0xfc | (($entity >> 30) & 0x01)).
+	chr(0x80 | (($entity >> 24) & 0x3f)).
+	chr(0x80 | (($entity >> 18) & 0x3f)).
+	chr(0x80 | (($entity >> 12) & 0x3f)).
+	chr(0x80 | (($entity >>  6) & 0x3f)).
+	chr(0x80 | ($entity & 0x3f));
+  } elsif ($entity & 0x03e00000) {
+    return
+	chr(0xf8 | (($entity >> 24) & 0x03)).
+	chr(0x80 | (($entity >> 18) & 0x3f)).
+	chr(0x80 | (($entity >> 12) & 0x3f)).
+	chr(0x80 | (($entity >>  6) & 0x3f)).
+	chr(0x80 | ($entity & 0x3f));
+  } elsif ($entity & 0x001f0000) {
+    return
+	chr(0xf0 | (($entity >> 18) & 0x07)).
+	chr(0x80 | (($entity >> 12) & 0x3f)).
+	chr(0x80 | (($entity >>  6) & 0x3f)).
+	chr(0x80 | ($entity & 0x3f));
+  } elsif ($entity & 0x0000f800) {
+    return
+	chr(0xe0 | (($entity >> 12) & 0x0f)).
+	chr(0x80 | (($entity >>  6) & 0x3f)).
+	chr(0x80 | ($entity & 0x3f));
+  } elsif ($entity & 0x00000780) {
+    return
+	chr(0xc0 | (($entity >>  6) & 0x1f)).
+	chr(0x80 | ($entity & 0x3f));
+  }
+  return chr($entity);
+}
+
+##### M.ITO ( #####
+sub format_content_table_replace {
+  my $text = $_[0];
+
+  # th td one line replace
+  $text =~ s/^\|\|/|/mg;
+  $text =~ s/^!!/!/mg;
+  $text =~ s/\|\|/\n|/sg;
+  $text =~ s/!!/\n!/sg;
+
+  # paramater delete
+  $text =~ s/^([{!|][}|+-]?)[^\[\]\n]+?\|/$1/mg;
+
+  # table replace
+  $text =~ s/^\{\|.*?$/<_BR>-----table pipe-----<_BR>+&nbsp;/mg; # table
+  $text =~ s/^\|\}/<_BR>--------------------<_BR>/mg;            # /table
+  $text =~ s/^\|\+[ \t]*(.*?)$/$1<_BR>/mg;                       # caption /caption
+                                                                 # thead tbody tfoot
+  $text =~ s/^\|-.*?$/<_BR>+&nbsp;/mg;                           # tr /tr 
+  $text =~ s/^![ \t]*(.*?)$/$1&nbsp;|&nbsp;/mg;                  # th /th 
+  $text =~ s/^\|[ \t]*(.*?)$/$1&nbsp;|&nbsp;/mg;                 # td /td 
+  $text =~ s/^\|[ \t]*$/&nbsp;|&nbsp;/mg;                        # td /td 
+
+  # br replace
+  $text =~ s!<br\s*/?>!!sg;
+
+  # top space remove
+  $text =~ s!^ +!!mg;
+
+  return $text;
+}
+##### M.ITO ) #####
+
+sub format_content_table {
+  my $text = $_[0];
+##### M.ITO ( #####
+#  my @texts = split(/(\{\||\|\})/, $text);
+  my @texts = split(/(\{\|[^{]*?\n|\|\})/, $text);
+##### M.ITO ) #####
+  my $level = 0;
+
+  $text = '';
+  foreach $_ (@texts) {
+##### M.ITO ( #####
+#    if ($_ eq '{|') {
+    if ($_ =~ /^\{\|[^{]*?\n/) {
+      $text .= format_content_table_replace($_);
+##### M.ITO ) #####
+      $level++;
+    } elsif ($_ eq '|}') {
+      if ($level == 0) {
+        format_content_warning ("opening table tag recognition is failed");
+##### M.ITO ( #####
+#        $text .= $_;
+        $text .= format_content_table_replace($_);
+##### M.ITO ) #####
+      }	else {
+##### M.ITO ( #####
+        $text .= format_content_table_replace($_);
+##### M.ITO ) #####
+        $level--;
+      }
+    } elsif ($level == 0) {
+      $text .= $_;
+##### M.ITO ( #####
+    } else {
+      $text .= format_content_table_replace($_);
+##### M.ITO ) #####
+    }
+  }
+
+  if ($level) {
+    format_content_warning("closing table tag recognition is failed");
+  }
+
+  return $text;
+}
+
+##### M.ITO ( #####
+sub format_content_table_html_replace {
+  my $text = $_[0];
+  $text =~ s!<table[^<]*?>!<_BR>-----table tag-----<_BR>!sg;
+  $text =~ s!</table>!-------------------<_BR>!sg;
+  $text =~ s!<caption[^<]*?>!!sg;
+  $text =~ s!</caption>!<_BR>!sg;
+  $text =~ s!<thead[^<]*?>!!sg;
+  $text =~ s!</thead>!!sg;
+  $text =~ s!<tbody[^<]*?>!!sg;
+  $text =~ s!</tbody>!!sg;
+  $text =~ s!<tfoot[^<]*?>!!sg;
+  $text =~ s!</tfoot>!!sg;
+  $text =~ s!<tr[^<]*?>!+&nbsp;!sg;
+  $text =~ s!</tr>!<_BR>!sg;
+  $text =~ s!<th[^<]*?>!!sg;
+  $text =~ s!</th>!&nbsp;|&nbsp;!sg;
+  $text =~ s!<td[^<]*?>!!sg;
+  $text =~ s!</td>!&nbsp;|&nbsp;!sg;
+  $text =~ s!<br\s*/?>!!sg;
+  $text =~ s!^ +!!mg;
+  return $text;
+}
+##### M.ITO ) #####
+
+sub format_content_table_html {
+  my $text = $_[0];
+  my @texts = split(/(<\/?table[^<]*?>)/, $text);
+  my $level = 0;
+
+  $text = '';
+  foreach $_ (@texts) {
+    if ($_ =~ /^<table/) {
+##### M.ITO ( #####
+      $text .= format_content_table_html_replace($_);
+##### M.ITO ) #####
+      $level++;
+    } elsif ($_ eq '</table>') {
+      if ($level == 0) {
+        format_content_warning ("opening table html tag recognition is failed");
+##### M.ITO ( #####
+#        $text .= $_;
+        $text .= format_content_table_html_replace($_);
+##### M.ITO ) #####
+      } else {
+##### M.ITO ( #####
+        $text .= format_content_table_html_replace($_);
+##### M.ITO ) #####
+        $level--;
+      }
+    } elsif ($level == 0) {
+      $text .= $_;
+##### M.ITO ( #####
+    } else {
+      $text .= format_content_table_html_replace($_);
+##### M.ITO ) #####
+    }
+  }
+
+  if ($level) {
+    format_content_warning("closing table html tag recognition is failed");
+  }
+
+  return $text;
+}
+
+##### M.ITO ( #####
+sub replace_template {
+  my ($heading, $text) = @_;
+  $text =~  s/\{\{PAGENAME\}\}/$heading/g;
+  # 情報付与関連 (
+  $text =~ s/\{\{DEFAULTSORT:[^\{\}]+\}\}//g;
+  $text =~ s/\{\{デフォルトソート:[^\{\}]+\}\}//g;
+  $text =~ s/\{\{kana-DEFAULTSORT(\|[^\{\}]+)?\}\}//g;
+  $text =~ s/\{\{[Ww]ikipedia(\|[^\{\}]+)?\}\}//g;
+  $text =~ s/\{\{infl\|[^\{\}]+(?:\|\|[^\{\}]+)?\}\}/$heading/g;
+  $text =~ s/\{\{head\|[^\{\}]+(?:\|\|[^\{\}]+)?\}\}/$heading/g;
+  # 情報付与関連 )
+  # Format supported templates.
+  $text =~ s/\{\{[lL]ang\|[a-z-]+\|([^\{\}]+)\}\}/$1/g;
+  $text =~ s/\{\{IPA\|([^\{\}]+)\}\}/[$1]/g;
+  # For Wiktionary templates.
+  $text =~ s/\{\{wp?\|([^\{\}]+)\}\}/$1/g;
+  # 言語変換のテンプレートに変換
+  $text =~ s/\{\{[L|T]\|([a-z]+)\}\}/{{$1}}/g;
+  $text =~ s/\{\{etyl\|([a-z-]+)(?:\|[^\|\{\}]+)*\}\}/{{$1}}/g;
+  # 言語変換
+  $text =~ s/\{\{jan?\}\}/日本語/g;
+  $text =~ s/\{\{ojp\}\}/古典日本語/g;
+  $text =~ s/\{\{ryu\}\}/沖縄語/g;
+  $text =~ s/\{\{ain\}\}/アイヌ語/g;
+  $text =~ s/\{\{eng?\}\}/英語/g;
+  $text =~ s/\{\{de\}\}/ドイツ語/g;
+  $text =~ s/\{\{hu\}\}/ハンガリー語/g;
+  $text =~ s/\{\{fr\}\}/フランス語/g;
+  $text =~ s/\{\{la\}\}/ラテン語/g;
+  $text =~ s/\{\{it\}\}/イタリア語/g;
+  $text =~ s/\{\{nl\}\}/オランダ語/g;
+  $text =~ s/\{\{es\}\}/スペイン語/g;
+  $text =~ s/\{\{sv\}\}/スウェーデン語/g;
+  $text =~ s/\{\{eo\}\}/エスペラント/g;
+  $text =~ s/\{\{ko\}\}/朝鮮語/g;
+  $text =~ s/\{\{zh\}\}/中国語/g;
+  $text =~ s/\{\{nan\}\}/閩南語/g;
+  $text =~ s/\{\{vi\}\}/ベトナム語/g;
+  $text =~ s/\{\{noun\}\}/名詞/g;
+  $text =~ s/\{\{verb\}\}/動詞/g;
+  $text =~ s/\{\{adj(ective)?\}\}/形容詞/g;
+  $text =~ s/\{\{adjectivenoun\}\}/形容動詞/g;
+  $text =~ s/\{\{pronoun\}\}/代名詞/g;
+  $text =~ s/\{\{adv(erb)?\}\}/副詞/g;
+  $text =~ s/\{\{name\}\}/固有名詞/g;
+  $text =~ s/\{\{num\}\}/数詞/g;
+  $text =~ s/\{\{conj(unction)?\}\}/接続詞/g;
+  $text =~ s/\{\{ant\}\}/対義語/g;
+  $text =~ s/\{\{syn\}\}/類義語/g;
+  $text =~ s/\{\{homonym\}\}/同音異義語/g;
+  $text =~ s/\{\{prov\}\}/熟語/g;
+  $text =~ s/\{\{comp\}\}/複合語/g;
+  $text =~ s/\{\{drv\}\}/派生語/g;
+  $text =~ s/\{\{rel\}\}/関連語/g;
+  $text =~ s/\{\{trans\}\}/訳語/g;
+  $text =~ s/\{\{etym\}\}/語源/g;
+  $text =~ s/\{\{idiom\}\}/成句/g;
+  $text =~ s/\{\{conjug(ation)?\}\}/活用/g;
+  $text =~ s/\{\{usage\}\}/用法/g;
+  $text =~ s/\{\{ref\}\}/例文/g;
+  $text =~ s/\{\{alter\}\}/異表記・別形/g;
+  $text =~ s/\{\{desc\}\}/諸言語への影響/g;
+  $text =~ s/\{\{pron\}\}/発音/g;
+  $text =~ s/\{\{pron\|([^\{\}]+)\}\}/発音\@$1\@/g;
+  # t
+  $text =~ s/\{\{t\+?\|[a-z]*\|([^\|\{\}]+)\|f(?:\|[^\{\}]*)?\}\}/$1 女性/g;
+  $text =~ s/\{\{t\+?\|[a-z]*\|([^\|\{\}]+)\|m(?:\|[^\{\}]*)?\}\}/$1 男性/g;
+  $text =~ s/\{\{t\+?\|[a-z]*\|([^\|\{\}]+)(?:\|[^\{\}]*)?\}\}/$1/g;
+  # ja-noun
+  $text =~ s/\{\{ja-noun\}\}/$heading/g;
+  if ($heading =~ /^[\u3041-\u3096]+$/) {
+    $text =~ s/\{\{ja-noun\|([^=\|\{\}]+)\}\}/$heading【$1】/g;
+    $text =~ s/\{\{ja-noun\|([^=\|\{\}]+)\|([^=\|\{\}]+)\}\}/$heading【$1・$2】/g;
+    $text =~ s/\{\{ja-noun\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\}\}/$heading【$1・$2・$3】/g;
+  } else { 
+    $text =~ s/\{\{ja-noun\|([^=\|\{\}]+)\}\}/$heading（$1）/g;
+    $text =~ s/\{\{ja-noun\|([^=\|\{\}]+)\|([^=\|\{\}]+)\}\}/$heading（$1 又は $2）/g;
+    $text =~ s/\{\{ja-noun\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\}\}/$heading（$1、$2 又は $3）/g;
+  }
+  # l m 系
+  $text =~ s/\{\{[lm]\|[a-z-]+\|([^\|\[\]\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/[[$1]]/g;
+  $text =~ s/\{\{[lm]\|[a-z-]+\|([^\|\[\]\{\}]+)\|([^=\|\[\]\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/[[$1|$2]]/g;
+  $text =~ s/\{\{[lm]\|[a-z-]+\|([^\|\[\]\{\}]+)\|\|([^=\|\[\]\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/[[$1]]「$2」/g;
+  $text =~ s/\{\{[lm]\|[a-z-]+\|([^\|\[\]\{\}]+)\|([^=\|\[\]\{\}]+)\|([^=\|\[\]\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/[[$1|$2]]「$3」/g;
+  # 参照関連 (
+  $text =~ s/\{\{see ?also\}\}/参照/g;
+  $text =~ s/\{\{see\|([^\{\}]+)\}\}/{{also|$1}}/g;
+  $text =~ s/\{\{also\|([^\|\[\]\{\}]+)\}\}/[[$1]]も参照/g;
+  $text =~ s/\{\{also\|([^\|\[\]\{\}]+)\|([^\|\[\]\{\}]+)\}\}/[[$1]]および[[$2]]も参照/g;
+  $text =~ s/\{\{also\|([^\|\[\]\{\}]+)\|([^\|\[\]\{\}]+)\|([^\|\[\]\{\}]+)\}\}/[[$1]]、[[$2]]および[[$3]]も参照/g;
+  $text =~ s/\{\{also\|([^\|\[\]\{\}]+)\|([^\|\[\]\{\}]+)\|([^\|\[\]\{\}]+)\|([^\|\[\]\{\}]+)\}\}/[[$1]]、[[$2]]、[[$3]]および[[$4]]も参照/g;
+  $text =~ s/\{\{also\|([^\|\[\]\{\}]+)\|([^\|\[\]\{\}]+)\|([^\|\[\]\{\}]+)\|([^\|\[\]\{\}]+)\|([^\|\[\]\{\}]+)\}\}/[[$1]]、[[$2]]、[[$3]]、[[$4]]および[[$5]]も参照/g;
+  # 参照関連 )
+  # ふりがな関連 (
+  $text =~ s!\{\{ruby\|([^\|\{\}]+)\|([^\|\{\}]+)\}\}!$1<sub>$2</sub>!g;
+  $text =~ s!\{\{ふりがな(?:\|yomilink=[a-z]+)?\|(?:([^=\|\[\]\{\}]+)|\[\[([^\[\]\{\}]*)\]\])\|(?:([^=\|\[\]\{\}]+)|\[\[([^\[\]\{\}]*)\]\])(?:\|yomilink=[a-z]+)?\}\}![[$1$2]]<sub>[[$3$4]]</sub>!g;
+  $text =~ s!\{\{ふりがな(?:\|yomilink=[a-z]+)?\|(?:([^=\|\[\]\{\}]+)|\[\[([^\[\]\{\}]*)\]\])\|(?:([^=\|\[\]\{\}]+)|\[\[([^\[\]\{\}]*)\]\])\|yomi2=(?:([^=\|\[\]\{\}]+)|\[\[([^\[\]\{\}]*)\]\])(?:\|yomilink=[a-z]+)?\}\}![[$1$2]]<sub>[[$3$4]]、[[$5$6]]</sub>!g;
+  $text =~ s!\{\{ふりがな(?:\|yomilink=[a-z]+)?\|(?:([^=\|\[\]\{\}]+)|\[\[([^\[\]\{\}]*)\]\])\|(?:([^=\|\[\]\{\}]+)|\[\[([^\[\]\{\}]*)\]\])\|yomi2=(?:([^=\|\[\]\{\}]+)|\[\[([^\[\]\{\}]*)\]\])\|yomi3=(?:([^=\|\[\]\{\}]+)|\[\[([^\[\]\{\}]*)\]\])(?:\|yomilink=[a-z]+)?\}\}![[$1$2]]<sub>[[$3$4]]、[[$5$6]]、[[$7$8]]</sub>!g;
+  $text =~ s!\{\{ふりがな(?:\|yomilink=[a-z]+)?\|(?:([^=\|\[\]\{\}]+)|\[\[([^\[\]\{\}]*)\]\])\|([^=\|\[\]\{\}]+)\|([^=\|\[\]\{\}]+)(?:\|yomilink=[a-z]+)?\}\}![[$1$2]]<sub>[[$3$4|$3]]</sub>!g;
+  $text =~ s!\{\{おくりがな\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\2\}\}![[$1]]<sub>[[$3$2|$3]]</sub>$2!g;
+  $text =~ s!\{\{おくりがな\|([^\|\{\}]+)\|([^\|\{\}])\|([^\|\{\}]+)(.)\}\}![[$1]]<sub>[[$3$4|$3]]</sub>$2!g;
+  $text =~ s!\{\{おくりがな\|([^\|\{\}]+)\|([^\|\{\}]{2})\|([^\|\{\}]+)(..)\}\}![[$1]]<sub>[[$3$4|$3]]</sub>$2!g;
+  $text =~ s!\{\{おくりがな\|([^\|\{\}]+)\|([^\|\{\}]{3})\|([^\|\{\}]+)(...)\}\}![[$1]]<sub>[[$3$4|$3]]</sub>$2!g;
+  $text =~ s!\{\{おくりがな2\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\|?\}\}![[$1]]<sub>[[$4|$2]]</sub>$3!g;
+  $text =~ s!\{\{おくりがな3\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]*)\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]*)\|([^\|\{\}]+)\}\}![[$1]]<sub>[[$7|$2]]</sub>$3\[[$4]]<sub>[[$7|$5]]</sub>$6!g;
+  # ふりがな関連 )
+  # 対応しないテンプレートを表示する（英字／デバッグ用？）
+  $text =~ s/\{\{([a-zA-Z0-9-]+)\|([^\{\}]+)\}\}/<\@$1\@$2\@>/g;
+  $text =~ s/\{\{([a-zA-Z0-9-]+)\}\}/<\@$1\@>/g;
+  # 対応しないテンプレートを表示する（英字以外／デバッグ用？）
+  $text =~ s/\{\{([^\|\{\}]+)\|([^\{\}]+)\}\}/<\@$1\@$2\@>/g;
+  $text =~ s/\{\{([^\|\{\}]+)\}\}/<\@$1\@>/g;
+  return $text;
+}
+##### M.ITO ) #####
+
+sub format_content_warning {
+  my ($message)= @_;
+
+  print "$PROGRAM_NAME: warning: $message.\n";
+}
+
+sub uniq_array {
+  my %tmp;
+  my $key;
+
+  foreach $key (@_) {
+    $tmp{$key} = 1;
+  }
+
+  return keys(%tmp);
+}
+
+sub get_entry_headings {
+  my ($filename) = @_;
+  
+  if ($hash_module eq 'BDB') {
+    require WikipediaFpw::Hash::BDB;
+    $entry_headings = WikipediaFpw::Hash::BDB->new();
+  } elsif ($hash_module eq 'GDBM') {
+    require WikipediaFpw::Hash::GDBM;
+    $entry_headings = WikipediaFpw::Hash::GDBM->new();
+  } else {
+    require WikipediaFpw::Hash::Hash;
+    $entry_headings = WikipediaFpw::Hash::Hash->new();
+  }
+  $entry_headings->open('entry_headings.db');
+  
+  if (not -e $filename) {
+    die("$PROGRAM_NAME: '$filename' does not exist.");
+  }
+
+  my $entry_file = FileHandle->new();
+  if (!$entry_file->open("$filename", 'r')) {
+    die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $filename\n";
+  }
+  
+  for (;;) {
+    $_ = $entry_file->getline();
+    if (!defined($_)) {
+      last;
+    }
+    if ($_ =~ /\t/) {
+      $_ =~ s/^(.+?)\t(.+)\n//s;
+      $entry_headings->put($1, $2);
+    } else {
+      $_ =~ /(.+)\n/;
+      $entry_headings->put($1, '');
+    }
+  }
+
+  $entry_file->close();  
+}
+
+1;

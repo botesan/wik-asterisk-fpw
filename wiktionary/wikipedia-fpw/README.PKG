@@ -1,0 +1,15 @@
+*FreePWING version of Wikipedia Japanese language edition.
+
+**これは何?
+FreePWING (*1) と wikipedia-fpw (*2) を利用してウィキペディア日本語版の
+ダンプデータをJIS X 4081形式に変換して作成された書籍です。
+
+(*1) http://www.sra.co.jp/people/m-kasahr/freepwing/
+(*2) http://green.ribbon.to/~ikazuhiro/dic/wikipedia-fpw.html
+
+**ライセンス
+書籍のライセンスはGFDLに従います。
+同梱のGFDLファイルを参照して下さい。
+
+**制限等
+***画像・音声・表・ユニコード特有の文字等は収録されていません。

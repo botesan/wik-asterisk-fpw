@@ -1,0 +1,94 @@
+*FreePWING program to convert Japanese language edition of Wikipedia.
+
+written by Kazuhiro Ito <kzhr@d1.dion.ne.jp>
+
+**これは何?
+FreePWING (*1) を利用してウィキペディア日本語版のダンプデータを
+JIS X 4081 形式に変換するツールです。
+
+(*1) http://www.sra.co.jp/people/m-kasahr/freepwing/
+
+**インストール
+下記のソフトウェアが必要です。
+
+*FreePWING
+もちろん。
+長い検索語を受け付ける、FreePWING 1.5 以降の使用をおすすめします。
+数式を収録する場合は FreePWING 1.6 以降が必要です。
+
+*Perl
+5.8 以降を使用してください。
+また、64ビットint と large file support が有効になっている必要があります。
+数式を収録する場合は Image::Magick モジュールも必要です。
+
+*mimeTeX (*2)
+数式を収録する場合には必要になります。
+
+(*2) http://www.forkosh.com/mimetex.html
+
+このツール自体のインストールは任意のディレクトリに展開するだけです。
+
+**使い方
+*変換準備
+**Wikipedia のダンプデータの準備
+http://download.wikimedia.org/jawiki/
+から
+jawiki-latest-pages-articles.xml.bz2
+jawiki-yyyymmdd-pages-articles.xml.bz2
+等のファイルをダウンロードしてください。
+
+Wikipedia のダンプデータを伸長後、wikipedia.xml とリネームし、
+ツールと同じディレクトリに置いてください。
+
+**設定
+wikipedia-fpw.conf を編集してリンクの作成の要不要、
+長い検索語に関する動作、数式の有無の設定等を行ってください。
+
+*変換
+$ fpwmake 
+
+で辞書 (HONMON ファイル) を
+
+$ fpwmake catalogs
+
+で CATALOGS ファイルを
+
+$ fpwmake package
+
+で辞書をパッケージした zip ファイルを生成します。
+fpwmake コマンドの実行時に
+
+Complex regular subexpression recursion limit (32766) exceeded at fpwwikipedia line 219, <GEN11> line 4959960.
+
+のようなエラー (?) が出るかも知れませんが気にしないでください。
+ちなみに、筆者の環境 (*4) では、パーサの実行だけで約3時間半かかりました。
+また、伸長したデータを置くのに約2.4GB、作業ディレクトリに約2.4GB、
+HONMONファイルが約1.5GB、パッケージを作る際にはもう1.5GB、
+完成したパッケージに約620MBのファイルスペースが必要でした。
+
+(*4) ThinkPad X60 C2D T7200, NetBSD 3.1 on VMware Server on Windows XP
+     20071121版のダンプデータを使用
+
+また、parser, preparser 等が Out of memory で止まる場合は DB_File
+モジュールをインストールしたうえで
+
+fuwmae HASH_MOD=BDB
+
+として辞書を作成してください。
+Cygwin の Perl には標準で DB_File モジュールがインストールされています。
+
+
+**ライセンス
+プログラムのライセンスは GPL v2 に従います。
+同梱の COPYING ファイルを参照して下さい。
+また、変換後の辞書は GFDL に従います。
+同梱の GFDL ファイルを参照して下さい。
+
+**制限等
+***そのまま辞書に登録できない文字は '?' になります。
+***画像・音声等には対応していません。
+***表などにも対応していません。
+***一部の数式は収録できていなかったり表示がおかしくなったりします。
+***Cygwin の perl では数式の処理に異常に時間がかかります。
+***Cygwin の perl では相互参照有効時に変換に失敗する場合があります。
+   詳しくは wikipedia-fpw の配布ページを参照してください。

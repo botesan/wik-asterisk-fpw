@@ -1,0 +1,23 @@
+# extensions
+*.tar.gz
+*.tar.bz2
+*.tar.lzma
+*.tar.xz
+*.zip
+*.dep
+# directories
+work/
+WIKTION/
+# source files
+wikipedia.xml
+# made files
+gai16h
+gai16f
+entries
+honmon
+catalogs
+# debug files
+error.txt
+log.txt
+notreplacetemplate.txt
+uniq-notreplacetemplate.txt

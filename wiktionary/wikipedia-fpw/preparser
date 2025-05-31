@@ -1,0 +1,160 @@
+#                                                         -*- Perl -*-
+# Copyright (c) 2007, 2008  Kazuhiro Ito
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+
+use strict;
+use warnings;
+use Getopt::Long;
+
+use English;
+use FileHandle;
+
+use vars qw(%fpwwikipedia_conf);
+require "wikipedia-fpw.conf";
+
+
+ MAIN: {
+   my $time = time;
+   my $page_count = 0;
+   my $entry_count = 0;
+
+   my $text;
+   my $heading;
+   my ($headings, $redirects);
+   my $hash_module;
+
+   if (!GetOptions('hash_module=s' => \$hash_module)) {
+     exit 1;
+   }
+
+   if ($hash_module eq 'BDB') {
+     require WikipediaFpw::Hash::BDB;
+     $headings = WikipediaFpw::Hash::BDB->new();
+     $redirects = WikipediaFpw::Hash::BDB->new();
+   } elsif ($hash_module eq 'GDBM') {
+     require WikipediaFpw::Hash::GDBM;
+     $headings = WikipediaFpw::Hash::GDBM->new();
+     $redirects = WikipediaFpw::Hash::GDBM->new();
+   } else {
+     require WikipediaFpw::Hash::Hash;
+     $headings = WikipediaFpw::Hash::Hash->new();
+     $redirects = WikipediaFpw::Hash::Hash->new();
+   }
+
+   $headings->open('headings.db');
+   $redirects->open('redirects.db');
+
+   my $wikipedia_filename = $ARGV[0];
+   my $output_filename = $ARGV[1];
+
+   if (not -e $wikipedia_filename) {
+     die("$PROGRAM_NAME: '$wikipedia_filename' does not exist.");
+   }
+
+   my $xml = FileHandle->new();
+   if (!$xml->open("$wikipedia_filename", 'r')) {
+     die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $wikipedia_filename\n";
+   }
+
+   my $output = FileHandle->new();
+   if (!$output->open("$output_filename", 'w')) {
+     die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $output_filename\n";
+   }
+
+   if(verbose_mode ()) {
+     print "Skipping headers: $fpwwikipedia_conf{'skip_heading'}\n";
+     print "Skipping contents: $fpwwikipedia_conf{'skip_content'}\n";
+     print "Selecting headers: $fpwwikipedia_conf{'select_heading'}\n";
+     print "Selecting contents: $fpwwikipedia_conf{'select_content'}\n";
+   }
+
+   PARSER: for (;;) {
+     $_ = '';
+     while (!(/<page>/)) {
+       $_ = $xml->getline();
+       if (!defined($_)) {
+	 last PARSER;
+       }
+     }
+
+     $text = $_;
+     
+     while (!(/<\/page>/)) {
+       $_ = $xml->getline();
+       if (!defined($_)) {
+	 die "$PROGRAM_NAME: Unexpected file end\n";
+       }
+       $text .= $_;
+     }
+
+     $text =~ /<title>([^<]+)<\/title>/;
+     $heading = $1;
+
+     # Skipping entries (for debug)
+     $page_count++;
+
+     if ((!(debug_mode()))
+	 && $page_count <= $fpwwikipedia_conf{'skip_count'}) {
+       next;
+     }
+
+     if (is_skipped_heading($heading)){
+       if (verbose_mode()) {
+	 print "Skipping heading: $heading.\n";
+       }
+       next;
+     }
+     
+     if ($_ = is_redirect_page($text)) {
+       print "Redirect: $page_count; $heading.\n";
+
+       if (defined($redirects->get($_))) {
+	 $redirects->put($_, $redirects->get($_) . "\t$heading");
+       } else {
+	 $redirects->put($_, $heading);
+       }
+       next;
+     } elsif (is_skipped_content($text)){
+       if (verbose_mode()) {
+	 print "Skipping content: $heading.\n";
+       }
+       next;
+     } else {
+       print "Entry: $page_count; $heading.\n";
+
+       $headings->put($heading, 1);
+     }
+
+     # Check number of entries (for debug)
+     $entry_count++;
+     if ((!debug_mode())
+	 && $fpwwikipedia_conf{'entry_count'}
+	 && $entry_count >= $fpwwikipedia_conf{'entry_count'}) {
+       last;
+     }
+   }
+
+   while ($heading = each(%{$headings->{'hash'}})) {
+     $text = $heading;
+     if (defined($redirects->get($heading))) {
+       $output->print("$heading\t" . $redirects->get($heading) . "\n");
+     } else {
+       $output->print("$heading\n");
+     }
+   }
+
+   $headings->close();
+   $redirects->close();
+
+   printf("$PROGRAM_NAME: Elapsed time     : %8dsec.\n", time - $time);
+   printf("$PROGRAM_NAME: Number of entries: %8d\n", $entry_count);
+}

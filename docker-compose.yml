@@ -1,0 +1,17 @@
+name: freepwing
+
+services:
+  freepwing:
+    build: ./freepwing
+    volumes:
+      - type: bind
+        source: ./freepwing/work/
+        target: /mnt/work/
+
+  wiktionary:
+    extends:
+      service: freepwing
+    volumes:
+      - type: bind
+        source: ./wiktionary/
+        target: /mnt/work/
