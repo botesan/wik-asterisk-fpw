@@ -10,15 +10,16 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
+require v5.6;
+use utf8;
+use warnings;
 
-require 5.005;
-
+use Getopt::Long;
 use English;
+use FileHandle;
 use FreePWING::ColorGraphic;
 use FreePWING::FPWUtils::FPWUtils;
-use Getopt::Long;
-use warnings;
-use FileHandle;
+use Encode qw/decode_utf8 encode_utf8/;
 
 use vars qw(%fpwwikipedia_conf);
 require "wikipedia-fpw.conf";
@@ -44,8 +45,8 @@ require "fpwwikipedia_common";
    my $wikipedia_filename;
 
    if (!GetOptions('workdir=s' => \$work_directory, 
-		   'srcfile=s' => \$wikipedia_filename,
-		   'hash_module=s' => \$hash_module)) {
+                   'srcfile=s' => \$wikipedia_filename,
+                   'hash_module=s' => \$hash_module)) {
      exit 1;
    }
 
@@ -66,7 +67,7 @@ require "fpwwikipedia_common";
 # 生成側ファイルを開く。
 #
    if (!$graphic->open($color_graphic_file_name,
-		       $color_graphic_tag_file_name)) {
+                       $color_graphic_tag_file_name)) {
      die "$PROGRAM_NAME: " . $graphic->error_message() . "\n";
    }
 
@@ -107,18 +108,18 @@ require "fpwwikipedia_common";
      while (!(/<page>/)) {
        $_ = $xml->getline();
        if (!defined($_)) {
-	 last PARSER;
+         last PARSER;
        }
      }
 
-     $text = $_;
+     $text = decode_utf8($_);
      
      while (!(/<\/page>/)) {
        $_ = $xml->getline();
        if (!defined($_)) {
-	 die "$PROGRAM_NAME: Unexpected file end\n";
+         die "$PROGRAM_NAME: Unexpected file end\n";
        }
-       $text .= $_;
+       $text .= decode_utf8($_);
      }
 
      $text =~ /<title>([^<]+)<\/title>/;
@@ -132,35 +133,32 @@ require "fpwwikipedia_common";
 
      if (!defined($entry_headings->get($heading))) {
        if (verbose_mode()) {
-	 print "Skipping page: $heading.\n";
+         print "Skipping page: $heading.\n";
        }
        next;
      }
 
-     print "Entry: $page_count; $heading\n";
+     print encode_utf8("Entry: $page_count; $heading\n");
 
      # main functions.
 
-##### M.ITO ( #####
-#     @maths = get_maths($text);
      @maths = get_maths($heading, $text);
-##### M.ITO ) #####
 
      foreach $_ (@maths) {
        if (!defined($math{$_})) {
-	 $math{$_} = 1;
-	 # print "math:".$_."\n";
+         $math{$_} = 1;
+         # print "math:".$_."\n";
 
-	 if (!$graphic->add_binary("math_$_", get_image(pack("H*", $_)))) {
-	   die "$PROGRAM_NAME: " . $graphic->error_message() . "\n";
-	 }
+         if (!$graphic->add_binary("math_$_", get_image(pack("H*", $_)))) {
+           die "$PROGRAM_NAME: " . $graphic->error_message() . "\n";
+         }
        }
      }
 
      # Check number of entries (for debug)
      $entry_count++;
      if ($fpwwikipedia_conf{'entry_count'} > 0
-	 && $entry_count >= $fpwwikipedia_conf{'entry_count'}) {
+         && $entry_count >= $fpwwikipedia_conf{'entry_count'}) {
        last;
      }
    }
@@ -168,15 +166,15 @@ require "fpwwikipedia_common";
    $entry_headings->close();
    $xml->close();
 
-   printf ("%6d formulas ard registered.\n", $graphic->entry_count());
+   printf (encode_utf8("%6d formulas ard registered.\n"), $graphic->entry_count());
 
  FINISH:
    if (!$graphic->close()) {
      die "$PROGRAM_NAME: " . $graphic->error_message() . "\n";
    }
 
-   printf("$PROGRAM_NAME: Elapsed time     : %8dsec.\n", time - $time);
-   printf("$PROGRAM_NAME: Number of entries: %8d\n", $entry_count);
+   printf(encode_utf8("$PROGRAM_NAME: Elapsed time     : %8dsec.\n"), time - $time);
+   printf(encode_utf8("$PROGRAM_NAME: Number of entries: %8d\n"), $entry_count);
 
 #
 # fpwutils の後始末をする。
@@ -226,14 +224,14 @@ sub get_image {
     $new_image->BlobToImage(
       # White gif image.
       pack("C*",
-	   0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x10, 0x00,
-	   0x10, 0x00, 0x91, 0x00, 0x00, 0x00, 0x00, 0x00,
-	   0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00,
-	   0x00, 0x21, 0xf9, 0x04, 0x01, 0x00, 0x00, 0x02,
-	   0x00, 0x2c, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
-	   0x10, 0x00, 0x00, 0x02, 0x0e, 0x8c, 0x8f, 0xa9,
-	   0xcb, 0xed, 0x0f, 0xa3, 0x9c, 0xb4, 0xda, 0x8b,
-	   0xb3, 0x3e, 0x05, 0x00, 0x3b));
+           0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x10, 0x00,
+           0x10, 0x00, 0x91, 0x00, 0x00, 0x00, 0x00, 0x00,
+           0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00,
+           0x00, 0x21, 0xf9, 0x04, 0x01, 0x00, 0x00, 0x02,
+           0x00, 0x2c, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
+           0x10, 0x00, 0x00, 0x02, 0x0e, 0x8c, 0x8f, 0xa9,
+           0xcb, 0xed, 0x0f, 0xa3, 0x9c, 0xb4, 0xda, 0x8b,
+           0xb3, 0x3e, 0x05, 0x00, 0x3b));
   }
 
   if ($fpwwikipedia_conf{'math_black'}) {
@@ -248,10 +246,7 @@ sub get_image {
 }
 
 sub get_maths {
-##### M.ITO ( #####
-#  my ($text) =@_;
   my ($heading, $text) = @_;
-##### M.ITO ) #####
   my @texts;
   my $level;
 
@@ -269,11 +264,11 @@ sub get_maths {
     $level = 0;
     foreach $_ (@texts) {
       if ($_ =~ /<!--/) {
-	$level = 1;
+        $level = 1;
       } elsif ($_ =~ /-->/) {
-	$level = 0;
+        $level = 0;
       } elsif ($level == 0) {
-	$text .= $_;
+        $text .= $_;
       }
     }
   }
@@ -285,15 +280,8 @@ sub get_maths {
   }
   $text = $tmp . $text;
 
-##### M.ITO ( #####
-#  # Format supported templates.
-#  $text =~ s/\{\{[lL]ang\|[a-z-]+\|([^\}]+)\}\}/$1/g;
-#  $text =~ s/\{\{:利用者:Bcjp\/t\/fbp国内表_top\|[^\}]*\}\}/\{\|/g;
-#  $text =~ s/\{\{サッカー代表個人成績\|[^\}]+\}\}/\{\|/g;
-#  $text =~ s/\{\{lang-en-short\|([^\}]+)\}\}/英: $1/g;
-#  $text =~ s/\{\{IPA\|([^\}]+)\}\}/[$1]/g;
+  # Format supported templates.
   $text = replace_template($heading, $text);
-##### M.ITO ) #####
  
   # Remove templates.
   while ($text =~ s/\{{3}[^\{\}]*\}{3}//sg) {}
@@ -302,7 +290,7 @@ sub get_maths {
   # Detect math formula
   $tmp = '';
   while ($text =~ s/^(.*?)<math( [^<>]*?)?>(.*?)<\/math>//s) {
-    $tmp .= "$1<math ".unpack('H*', $3).'>';
+    $tmp .= "$1<math ".unpack('H*', encode_utf8($3)).'>';
   }
   $text = $tmp . $text;
 

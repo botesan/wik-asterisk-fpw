@@ -10,6 +10,11 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
+require v5.6;
+use utf8;
+use strict;
+
+use Encode qw/decode_utf8/;
 
 sub decode_entity {
   my $text = $_[0];
@@ -19,9 +24,9 @@ sub decode_entity {
   foreach $_ (@texts) {
     if ($_ =~ /&([0-9a-zA-Z]+);/) {
       if (defined($entity_table{$1})) {
-	$text .= $entity_table{$1};
+        $text .= $entity_table{$1};
       } else {
-	$text .= '?';
+        $text .= '?';
       }
     } elsif ($_ =~ /&\#([0-9]+|x[0-9a-fA-F]+);/) {
       $text .= decode_entitry_internal($1);
@@ -42,39 +47,38 @@ sub decode_entitry_internal {
 
   if      ($entity & 0x7c000000) {
     return
-	chr(0xfc | (($entity >> 30) & 0x01)).
-	chr(0x80 | (($entity >> 24) & 0x3f)).
-	chr(0x80 | (($entity >> 18) & 0x3f)).
-	chr(0x80 | (($entity >> 12) & 0x3f)).
-	chr(0x80 | (($entity >>  6) & 0x3f)).
-	chr(0x80 | ($entity & 0x3f));
+        chr(0xfc | (($entity >> 30) & 0x01)).
+        chr(0x80 | (($entity >> 24) & 0x3f)).
+        chr(0x80 | (($entity >> 18) & 0x3f)).
+        chr(0x80 | (($entity >> 12) & 0x3f)).
+        chr(0x80 | (($entity >>  6) & 0x3f)).
+        chr(0x80 | ($entity & 0x3f));
   } elsif ($entity & 0x03e00000) {
     return
-	chr(0xf8 | (($entity >> 24) & 0x03)).
-	chr(0x80 | (($entity >> 18) & 0x3f)).
-	chr(0x80 | (($entity >> 12) & 0x3f)).
-	chr(0x80 | (($entity >>  6) & 0x3f)).
-	chr(0x80 | ($entity & 0x3f));
+        chr(0xf8 | (($entity >> 24) & 0x03)).
+        chr(0x80 | (($entity >> 18) & 0x3f)).
+        chr(0x80 | (($entity >> 12) & 0x3f)).
+        chr(0x80 | (($entity >>  6) & 0x3f)).
+        chr(0x80 | ($entity & 0x3f));
   } elsif ($entity & 0x001f0000) {
     return
-	chr(0xf0 | (($entity >> 18) & 0x07)).
-	chr(0x80 | (($entity >> 12) & 0x3f)).
-	chr(0x80 | (($entity >>  6) & 0x3f)).
-	chr(0x80 | ($entity & 0x3f));
+        chr(0xf0 | (($entity >> 18) & 0x07)).
+        chr(0x80 | (($entity >> 12) & 0x3f)).
+        chr(0x80 | (($entity >>  6) & 0x3f)).
+        chr(0x80 | ($entity & 0x3f));
   } elsif ($entity & 0x0000f800) {
     return
-	chr(0xe0 | (($entity >> 12) & 0x0f)).
-	chr(0x80 | (($entity >>  6) & 0x3f)).
-	chr(0x80 | ($entity & 0x3f));
+        chr(0xe0 | (($entity >> 12) & 0x0f)).
+        chr(0x80 | (($entity >>  6) & 0x3f)).
+        chr(0x80 | ($entity & 0x3f));
   } elsif ($entity & 0x00000780) {
     return
-	chr(0xc0 | (($entity >>  6) & 0x1f)).
-	chr(0x80 | ($entity & 0x3f));
+        chr(0xc0 | (($entity >>  6) & 0x1f)).
+        chr(0x80 | ($entity & 0x3f));
   }
   return chr($entity);
 }
 
-##### M.ITO ( #####
 sub format_content_table_replace {
   my $text = $_[0];
 
@@ -105,43 +109,29 @@ sub format_content_table_replace {
 
   return $text;
 }
-##### M.ITO ) #####
 
 sub format_content_table {
   my $text = $_[0];
-##### M.ITO ( #####
-#  my @texts = split(/(\{\||\|\})/, $text);
   my @texts = split(/(\{\|[^{]*?\n|\|\})/, $text);
-##### M.ITO ) #####
   my $level = 0;
 
   $text = '';
   foreach $_ (@texts) {
-##### M.ITO ( #####
-#    if ($_ eq '{|') {
     if ($_ =~ /^\{\|[^{]*?\n/) {
       $text .= format_content_table_replace($_);
-##### M.ITO ) #####
       $level++;
     } elsif ($_ eq '|}') {
       if ($level == 0) {
         format_content_warning ("opening table tag recognition is failed");
-##### M.ITO ( #####
-#        $text .= $_;
         $text .= format_content_table_replace($_);
-##### M.ITO ) #####
       }	else {
-##### M.ITO ( #####
         $text .= format_content_table_replace($_);
-##### M.ITO ) #####
         $level--;
       }
     } elsif ($level == 0) {
       $text .= $_;
-##### M.ITO ( #####
     } else {
       $text .= format_content_table_replace($_);
-##### M.ITO ) #####
     }
   }
 
@@ -152,7 +142,6 @@ sub format_content_table {
   return $text;
 }
 
-##### M.ITO ( #####
 sub format_content_table_html_replace {
   my $text = $_[0];
   $text =~ s!<table[^<]*?>!<_BR>-----table tag-----<_BR>!sg;
@@ -175,7 +164,6 @@ sub format_content_table_html_replace {
   $text =~ s!^ +!!mg;
   return $text;
 }
-##### M.ITO ) #####
 
 sub format_content_table_html {
   my $text = $_[0];
@@ -185,29 +173,20 @@ sub format_content_table_html {
   $text = '';
   foreach $_ (@texts) {
     if ($_ =~ /^<table/) {
-##### M.ITO ( #####
       $text .= format_content_table_html_replace($_);
-##### M.ITO ) #####
       $level++;
     } elsif ($_ eq '</table>') {
       if ($level == 0) {
         format_content_warning ("opening table html tag recognition is failed");
-##### M.ITO ( #####
-#        $text .= $_;
         $text .= format_content_table_html_replace($_);
-##### M.ITO ) #####
       } else {
-##### M.ITO ( #####
         $text .= format_content_table_html_replace($_);
-##### M.ITO ) #####
         $level--;
       }
     } elsif ($level == 0) {
       $text .= $_;
-##### M.ITO ( #####
     } else {
       $text .= format_content_table_html_replace($_);
-##### M.ITO ) #####
     }
   }
 
@@ -218,7 +197,6 @@ sub format_content_table_html {
   return $text;
 }
 
-##### M.ITO ( #####
 sub replace_template {
   my ($heading, $text) = @_;
   $text =~  s/\{\{PAGENAME\}\}/$heading/g;
@@ -286,6 +264,34 @@ sub replace_template {
   $text =~ s/\{\{desc\}\}/諸言語への影響/g;
   $text =~ s/\{\{pron\}\}/発音/g;
   $text =~ s/\{\{pron\|([^\{\}]+)\}\}/発音\@$1\@/g;
+  # context
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:他動詞|transitive|transitive\+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(他動詞) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:古用法|古|dated)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(古用法) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:自動詞|intransitive|intransitive\+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(自動詞) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:廃語|obsolete)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(廃語) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:仏教|Buddhism)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(仏教) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:俗語|俗|slang)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(俗語) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:ジャージー|Jersey)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(ジャージー) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:慣用的表現|idiomatic)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(慣用的表現) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:文化語|North Korea)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(北朝鮮) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:韓国語|South Korea)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(韓国) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:首都名|首都|capital)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(首都) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:情報技術|computing)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(情報技術) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:不可算名詞|不可算|uncountable|uncountable\+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(不可算) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:音楽|music)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(音楽) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:古語・廃語|古・廃|archaic)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(古語・廃語) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:法律|law|legal)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(法律) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:解剖学|anatomy)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(解剖学) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:可算名詞|可算|countable|countable\+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(可算) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:口語|colloquial|informal)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(口語) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:略語|abbr|abbreviation)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(略語) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:数学|mathematics|math)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(数学) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:料理|cuisine)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(料理) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:色|color)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(色) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:米語|American spelling|US)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(米語) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:文章語|文語|literary)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(文章語) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:figuratively)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(比喩的に) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}ー]{2,})(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/($1) /g;
   # 音声は削除
   $text =~ s/\{\{音声\|[^\{\}]+\}\}//g;
   # top / bottom
@@ -295,6 +301,17 @@ sub replace_template {
   $text =~ s/\{\{t\+?\|[a-z]*\|([^\|\{\}]+)\|f(?:\|[^\{\}]*)?\}\}/$1 女性/g;
   $text =~ s/\{\{t\+?\|[a-z]*\|([^\|\{\}]+)\|m(?:\|[^\{\}]*)?\}\}/$1 男性/g;
   $text =~ s/\{\{t\+?\|[a-z]*\|([^\|\{\}]+)(?:\|[^\{\}]*)?\}\}/$1/g;
+  # jachar(s) / zhchar(s)
+  $text =~ s/\{\{(?:ja|zh)char\|([^\|\{\}]+)\|([^\|\{\}]+)\}\}/[[$1]][[$2]]/g;
+  $text =~ s/\{\{(?:ja|zh)char\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\}\}/[[$1]][[$2]][[$3]]/g;
+  $text =~ s/\{\{(?:ja|zh)char\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\}\}/[[$1]][[$2]][[$3]][[$4]]/g;
+  $text =~ s/\{\{(?:ja|zh)char\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\}\}/[[$1]][[$2]][[$3]][[$4]][[$5]]/g;
+  $text =~ s/\{\{(?:ja|zh)char\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\}\}/[[$1]][[$2]][[$3]][[$4]][[$5]][[$6]]/g;
+  $text =~ s/\{\{(?:ja|zh)chars\}\}/'[['.substr($heading,0,1).']][['.substr($heading,1,1).']]'/eg if (length($heading) == 2);
+  $text =~ s/\{\{(?:ja|zh)chars\}\}/'[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']]'/eg if (length($heading) == 3);
+  $text =~ s/\{\{(?:ja|zh)chars\}\}/'[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']][['.substr($heading,3,1).']]'/eg if (length($heading) == 4);
+  $text =~ s/\{\{(?:ja|zh)chars\}\}/'[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']][['.substr($heading,3,1).']][['.substr($heading,4,1).']]'/eg if (length($heading) == 5);
+  $text =~ s/\{\{(?:ja|zh)chars\}\}/'[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']][['.substr($heading,3,1).']][['.substr($heading,4,1).']][['.substr($heading,4,1).']]'/eg if (length($heading) == 6);
   # ja-noun
   $text =~ s/\{\{ja-noun\}\}/$heading/g;
   if ($heading =~ /^[\u3041-\u3096]+$/) {
@@ -333,6 +350,11 @@ sub replace_template {
   $text =~ s!\{\{おくりがな2\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\|?\}\}![[$1]]<sub>[[$4|$2]]</sub>$3!g;
   $text =~ s!\{\{おくりがな3\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]*)\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]*)\|([^\|\{\}]+)\}\}![[$1]]<sub>[[$7|$2]]</sub>$3\[[$4]]<sub>[[$7|$5]]</sub>$6!g;
   # ふりがな関連 )
+  # 漢字情報 (
+  $text =~ s!\{\{部首\|(?:([^=\|\[\]\{\}]+)|\[\[([^\[\]\{\}]*)\]\])(?:\|)?\}\}![[部首]]：[[$1$2]]!g;
+  $text =~ s!\{\{部首\|(?:([^=\|\[\]\{\}]+)|\[\[([^\[\]\{\}]*)\]\])\|([^=\|\[\]\{\}]+)(?:\|[^\|\{\}]*)*\}\}![[部首]]：[[$1$2]]+$3画!g;
+  $text =~ s!\{\{総画\|([^=\|\[\]\{\}]+)(?:\|[^\|\{\}]*)*\}\}![[総画]]：$1画!g;
+  # 漢字情報 )
   # 対応しないテンプレートを表示する（英字／デバッグ用？）
   $text =~ s/\{\{([a-zA-Z0-9-]+)\|([^\{\}]+)\}\}/<\@$1\@$2\@>/g;
   $text =~ s/\{\{([a-zA-Z0-9-]+)\}\}/<\@$1\@>/g;
@@ -341,7 +363,6 @@ sub replace_template {
   $text =~ s/\{\{([^\|\{\}]+)\}\}/<\@$1\@>/g;
   return $text;
 }
-##### M.ITO ) #####
 
 sub format_content_warning {
   my ($message)= @_;
@@ -389,6 +410,7 @@ sub get_entry_headings {
     if (!defined($_)) {
       last;
     }
+    $_ = decode_utf8($_);
     if ($_ =~ /\t/) {
       $_ =~ s/^(.+?)\t(.+)\n//s;
       $entry_headings->put($1, $2);
