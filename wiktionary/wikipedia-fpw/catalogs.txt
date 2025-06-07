@@ -7,3 +7,5 @@ Books      = 1
 Title      = "ウィクショナリー日本語版"
 BookType   = 5001
 Directory  = "WIKTION"
+ZenGaiji   = "GAI16F"
+HanGaiji   = "GAI16H"

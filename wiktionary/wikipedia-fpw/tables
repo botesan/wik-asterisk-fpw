@@ -77,7 +77,7 @@ use vars qw (%entity_table %utf2euc_table $utf2euc_regexp);
 #     'THORN' => '?',
      'Tau' => 'T',
      'Theta'   => 'Θ',
-     'Uacute' => 'U\'',     
+     'Uacute' => 'U\'',
      'Ucirc' => 'U^',
      'Ugrave' => 'U`',
      'Upsilon' => 'Y',
@@ -279,12 +279,18 @@ use vars qw (%entity_table %utf2euc_table $utf2euc_regexp);
 %utf2euc_table =
     (
      # (FULLWIDTH TILDE, U+FF5E) -> (WAVE DASH, U+301C)
-     "\xEF\xBD\x9E" => "\xE3\x80\x9C",
+     #"\xEF\xBD\x9E" => "\xE3\x80\x9C",
+     chr(0xFF5E) => chr(0x301C),
      # (FULLWIDTH HYPHEN-MINUS, U+FF0D) -> (MINUS SIGN, U+2212)
-     "\xEF\xBC\x8D" => "\xE2\x88\x92",
-     "\xc2\xb2" => '^2',
+     #"\xEF\xBC\x8D" => "\xE2\x88\x92",
+     chr(0xFF0D) => chr(0x2212),
+     #"\xc2\xb2" => '^2',
+     "²" => '^2',
      # (EN DASH, U+2013) -> (HYPHEN-MINUS, U+002D)
-     "\xE2\x80\x93" => '-',
+     #"\xE2\x80\x93" => '-',
+     chr(0x2013) => '-',
+     # (EM DASH, U+2014) -> (HYPHEN-MINUS, U+002D * 2)
+     chr(0x2014) => '--',
      '«' => '≪',
      '»' => '≫',
      'À' => 'A`',

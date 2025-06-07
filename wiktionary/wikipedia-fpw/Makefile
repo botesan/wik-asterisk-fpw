@@ -20,8 +20,8 @@ SOURCES = ${COMMON_SOURCES} tables
 PACKAGEEXTRA = ${COPYRIGHT_FILE} README.PKG
 PREPARSER = preparser
 
-#HALFCHARS = halfchar.txt
-#FULLCHARS = fullchar.txt
+HALFCHARS = halfchar.txt
+FULLCHARS = fullchar.txt
 
 ifndef HASH_MOD
 HASH_MOD = Hash

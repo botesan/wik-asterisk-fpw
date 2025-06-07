@@ -35,6 +35,7 @@ case $1 in
     fi
     if [[ -e $DIC_ZIP_FILE && ! -e $DIC_DIR ]]; then
         unzip $DIC_ZIP_FILE
+        cp -p $FPW_DIR/work/gaiji.map $DIC_DIR/$DIC_DIR.map
         cd $DIC_DIR
         LD_LIBRARY_PATH=/usr/local/lib ebzip -z -l 5 -n
         cd ..

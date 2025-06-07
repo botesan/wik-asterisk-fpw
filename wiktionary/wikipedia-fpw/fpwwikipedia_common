@@ -45,37 +45,6 @@ sub decode_entitry_internal {
     $entity = hex ($1);
   }
 
-  if      ($entity & 0x7c000000) {
-    return
-        chr(0xfc | (($entity >> 30) & 0x01)).
-        chr(0x80 | (($entity >> 24) & 0x3f)).
-        chr(0x80 | (($entity >> 18) & 0x3f)).
-        chr(0x80 | (($entity >> 12) & 0x3f)).
-        chr(0x80 | (($entity >>  6) & 0x3f)).
-        chr(0x80 | ($entity & 0x3f));
-  } elsif ($entity & 0x03e00000) {
-    return
-        chr(0xf8 | (($entity >> 24) & 0x03)).
-        chr(0x80 | (($entity >> 18) & 0x3f)).
-        chr(0x80 | (($entity >> 12) & 0x3f)).
-        chr(0x80 | (($entity >>  6) & 0x3f)).
-        chr(0x80 | ($entity & 0x3f));
-  } elsif ($entity & 0x001f0000) {
-    return
-        chr(0xf0 | (($entity >> 18) & 0x07)).
-        chr(0x80 | (($entity >> 12) & 0x3f)).
-        chr(0x80 | (($entity >>  6) & 0x3f)).
-        chr(0x80 | ($entity & 0x3f));
-  } elsif ($entity & 0x0000f800) {
-    return
-        chr(0xe0 | (($entity >> 12) & 0x0f)).
-        chr(0x80 | (($entity >>  6) & 0x3f)).
-        chr(0x80 | ($entity & 0x3f));
-  } elsif ($entity & 0x00000780) {
-    return
-        chr(0xc0 | (($entity >>  6) & 0x1f)).
-        chr(0x80 | ($entity & 0x3f));
-  }
   return chr($entity);
 }
 
@@ -217,6 +186,9 @@ sub replace_template {
   # 言語変換のテンプレートに変換
   $text =~ s/\{\{[L|T]\|([a-z]+)\}\}/{{$1}}/g;
   $text =~ s/\{\{etyl\|([a-z-]+)(?:\|[^\|\{\}]+)*\}\}/{{$1}}/g;
+  # 借用（bor）借用元は言語変換テンプレートに変換
+  $text =~ s/\{\{bor\|[a-z-]+\|([a-z-]+)\|([^=\|\{\}]+)\}\}/[[{{$1}}]] [[$2]] からの[[借用語]]/g;
+  $text =~ s/\{\{bor\|[a-z-]+\|([a-z-]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\}\}/[[{{$1}}]] [[$2|$3]] からの[[借用語]]/g;
   # 言語変換
   $text =~ s/\{\{jan?\}\}/日本語/g;
   $text =~ s/\{\{ojp\}\}/古典日本語/g;
@@ -226,7 +198,7 @@ sub replace_template {
   $text =~ s/\{\{de\}\}/ドイツ語/g;
   $text =~ s/\{\{hu\}\}/ハンガリー語/g;
   $text =~ s/\{\{fr\}\}/フランス語/g;
-  $text =~ s/\{\{la\}\}/ラテン語/g;
+  $text =~ s/\{\{lat?\}\}/ラテン語/g;
   $text =~ s/\{\{it\}\}/イタリア語/g;
   $text =~ s/\{\{nl\}\}/オランダ語/g;
   $text =~ s/\{\{es\}\}/スペイン語/g;
@@ -238,6 +210,23 @@ sub replace_template {
   $text =~ s/\{\{zh\}\}/中国語/g;
   $text =~ s/\{\{nan\}\}/閩南語/g;
   $text =~ s/\{\{vi\}\}/ベトナム語/g;
+  $text =~ s/\{\{ca\}\}/カタルーニャ語/g;
+  $text =~ s/\{\{pl\}\}/ポーランド語/g;
+  $text =~ s/\{\{fi\}\}/フィンランド語/g;
+  $text =~ s/\{\{cs\}\}/チェコ語/g;
+  $text =~ s/\{\{no\}\}/ノルウェー語/g;
+  $text =~ s/\{\{nb\}\}/ノルウェー語（ブークモール）/g;
+  $text =~ s/\{\{nn\}\}/ノルウェー語（ニーノシュク）/g;
+  $text =~ s/\{\{da\}\}/デンマーク語/g;
+  $text =~ s/\{\{bor\}\}/ボロロ語/g;
+  $text =~ s/\{\{lb\}\}/ルクセンブルク語/g;
+  $text =~ s/\{\{sh\}\}/セルビア・クロアチア語/g;
+  $text =~ s/\{\{ro\}\}/ルーマニア語/g;
+  $text =~ s/\{\{gl\}\}/ガリシア語/g;
+  # 発音
+  $text =~ s/\{\{pron\}\}/発音/g;
+  $text =~ s/\{\{pron\|([^\{\}]+)\}\}/発音\@$1\@/g;
+  # 品詞等
   $text =~ s/\{\{noun\}\}/名詞/g;
   $text =~ s/\{\{verb\}\}/動詞/g;
   $text =~ s/\{\{adj(ective)?\}\}/形容詞/g;
@@ -262,9 +251,9 @@ sub replace_template {
   $text =~ s/\{\{ref\}\}/例文/g;
   $text =~ s/\{\{alter\}\}/異表記・別形/g;
   $text =~ s/\{\{desc\}\}/諸言語への影響/g;
-  $text =~ s/\{\{pron\}\}/発音/g;
-  $text =~ s/\{\{pron\|([^\{\}]+)\}\}/発音\@$1\@/g;
+  $text =~ s/\{\{wago\}\}/和語の漢字表記/g;
   # context
+  $text =~ s/\{\{(?:label|lb)\|([^\|\{\}]+)\|([^\{\}]+)\}\}/\{\{context\|lang=$1\|$2\}\}/g;
   $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:他動詞|transitive|transitive\+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(他動詞) /g;
   $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:古用法|古|dated)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(古用法) /g;
   $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:自動詞|intransitive|intransitive\+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(自動詞) /g;
@@ -291,16 +280,36 @@ sub replace_template {
   $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:米語|American spelling|US)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(米語) /g;
   $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:文章語|文語|literary)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(文章語) /g;
   $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:figuratively)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(比喩的に) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:言語学|linguistics|linguistique)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(言語学) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:文法|grammar)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(文法) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:物理学|physics)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(物理学) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:医学|medicine|Medical|medical)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(医学) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:教育|education)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(教育) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:化学|chemistry)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(化学) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:衣類|clothing)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(衣類) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:海事|nautical)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(海事) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:軍事|military)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(軍事) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:キリスト教|Christ|Christian|Christianity)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(キリスト教) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:植物学|botany)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(植物学) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:稀用|まれ|rare)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(まれ) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:時間|time)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(時間) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:食品|food)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(食品) /g;
   $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}ー]{2,})(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/($1) /g;
   # 音声は削除
+  $text =~ s/\{\{audio\|[^\{\}]+\}\}//g;
   $text =~ s/\{\{音声\|[^\{\}]+\}\}//g;
-  # top / bottom
+  # top / bottom / trans-top / trans-bottom
   $text =~ s/\{\{top[0-9]*\}\}//g;
   $text =~ s/\{\{bottom\}\}//g;
+  $text =~ s/\{\{trans-top\}\}//g;
+  $text =~ s/\{\{trans-top\|([^\|\{\}]+)\}\}/$1/g;
+  $text =~ s/\{\{trans-bottom\}\}//g;
   # t
   $text =~ s/\{\{t\+?\|[a-z]*\|([^\|\{\}]+)\|f(?:\|[^\{\}]*)?\}\}/$1 女性/g;
   $text =~ s/\{\{t\+?\|[a-z]*\|([^\|\{\}]+)\|m(?:\|[^\{\}]*)?\}\}/$1 男性/g;
   $text =~ s/\{\{t\+?\|[a-z]*\|([^\|\{\}]+)(?:\|[^\{\}]*)?\}\}/$1/g;
+  # supra
+  $text =~ s!\{\{supra\|([^\|\{\}]+)\}\}!<sup>$1</sup>!g;
   # jachar(s) / zhchar(s)
   $text =~ s/\{\{(?:ja|zh)char\|([^\|\{\}]+)\|([^\|\{\}]+)\}\}/[[$1]][[$2]]/g;
   $text =~ s/\{\{(?:ja|zh)char\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\}\}/[[$1]][[$2]][[$3]]/g;
@@ -311,23 +320,48 @@ sub replace_template {
   $text =~ s/\{\{(?:ja|zh)chars\}\}/'[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']]'/eg if (length($heading) == 3);
   $text =~ s/\{\{(?:ja|zh)chars\}\}/'[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']][['.substr($heading,3,1).']]'/eg if (length($heading) == 4);
   $text =~ s/\{\{(?:ja|zh)chars\}\}/'[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']][['.substr($heading,3,1).']][['.substr($heading,4,1).']]'/eg if (length($heading) == 5);
-  $text =~ s/\{\{(?:ja|zh)chars\}\}/'[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']][['.substr($heading,3,1).']][['.substr($heading,4,1).']][['.substr($heading,4,1).']]'/eg if (length($heading) == 6);
-  # ja-noun
-  $text =~ s/\{\{ja-noun\}\}/$heading/g;
-  if ($heading =~ /^[\u3041-\u3096]+$/) {
-    $text =~ s/\{\{ja-noun\|([^=\|\{\}]+)\}\}/$heading【$1】/g;
-    $text =~ s/\{\{ja-noun\|([^=\|\{\}]+)\|([^=\|\{\}]+)\}\}/$heading【$1・$2】/g;
-    $text =~ s/\{\{ja-noun\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\}\}/$heading【$1・$2・$3】/g;
-  } else { 
-    $text =~ s/\{\{ja-noun\|([^=\|\{\}]+)\}\}/$heading（$1）/g;
-    $text =~ s/\{\{ja-noun\|([^=\|\{\}]+)\|([^=\|\{\}]+)\}\}/$heading（$1 又は $2）/g;
-    $text =~ s/\{\{ja-noun\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\}\}/$heading（$1、$2 又は $3）/g;
+  $text =~ s/\{\{(?:ja|zh)chars\}\}/'[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']][['.substr($heading,3,1).']][['.substr($heading,4,1).']][['.substr($heading,5,1).']]'/eg if (length($heading) == 6);
+  # wagokanji of
+  $text =~ s/\{\{wagokanji of\|([^\|\{\}]+)\}\}/[[$1]]の漢字表記。/g;
+  # ja-headword系をまとめる（今わかっている分 ja-(noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)）
+  if ($heading =~ /^([\p{sc=Hiragana}\p{sc=Katakana}ー]+)$/) {
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)\}\}/$heading/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1・$2】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1・$2・$3】/g;
+  } elsif ($heading =~ /^.*\p{sc=Han}.*$/) {
+    my $replaced;
+    if (length($heading) == 1) {
+      $replaced = '[['.substr($heading,0,1).']]';
+    } elsif (length($heading) == 2) {
+      $replaced = '[['.substr($heading,0,1).']][['.substr($heading,1,1).']]';
+    } elsif (length($heading) == 3) {
+      $replaced = '[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']]';
+    } elsif (length($heading) == 4) {
+      $replaced = '[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']][['.substr($heading,3,1).']]';
+    } elsif (length($heading) == 5) {
+      $replaced = '[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']][['.substr($heading,3,1).']][['.substr($heading,4,1).']]';
+    } elsif (length($heading) == 6) {
+      $replaced = '[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']][['.substr($heading,3,1).']][['.substr($heading,4,1).']][['.substr($heading,5,1).']]';
+    } else {
+      $replaced = '';
+    }
+    if ($replaced ne '') {
+      $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)\}\}/$replaced/g;
+      $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$replaced（$1）/g;
+      $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$replaced（$1 又は $2）/g;
+      $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$replaced（$1、$2 又は $3）/g;
+    }
   }
   # l m 系
   $text =~ s/\{\{[lm]\|[a-z-]+\|([^\|\[\]\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/[[$1]]/g;
   $text =~ s/\{\{[lm]\|[a-z-]+\|([^\|\[\]\{\}]+)\|([^=\|\[\]\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/[[$1|$2]]/g;
   $text =~ s/\{\{[lm]\|[a-z-]+\|([^\|\[\]\{\}]+)\|\|([^=\|\[\]\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/[[$1]]「$2」/g;
   $text =~ s/\{\{[lm]\|[a-z-]+\|([^\|\[\]\{\}]+)\|([^=\|\[\]\{\}]+)\|([^=\|\[\]\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/[[$1|$2]]「$3」/g;
+  # m / f / n
+  $text =~ s/\{\{m\}\}/男性/g;
+  $text =~ s/\{\{f\}\}/女性/g;
+  $text =~ s/\{\{n\}\}/中性/g;
   # 参照関連 (
   $text =~ s/\{\{see ?also\}\}/参照/g;
   $text =~ s/\{\{see\|([^\{\}]+)\}\}/{{also|$1}}/g;

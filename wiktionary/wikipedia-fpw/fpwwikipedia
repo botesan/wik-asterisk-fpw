@@ -19,7 +19,7 @@ use Getopt::Long;
 use English;
 use FileHandle;
 use FreePWING::FPWUtils::FPWParser;
-use Encode qw/ from_to decode_utf8 encode_utf8 encode/;
+use Encode qw/ from_to decode_utf8 encode_utf8 encode decode/;
 
 use vars qw(%fpwwikipedia_conf);
 require "wikipedia-fpw.conf";
@@ -33,89 +33,89 @@ use vars qw($entry_headings $hash_module);
 
 require "fpwwikipedia_common";
 
-
  MAIN: {
-   my $time = time;
-   my $page_count = 0;
-   my $entry_count = 0;
+  my $time = time;
+  my $page_count = 0;
+  my $entry_count = 0;
 
-   my ($fpwtext, $fpwheading, $fpwword2, $fpwcopyright);
-   initialize_fpwparser('text' => \$fpwtext,
-                        'heading' => \$fpwheading,
-                        'word2' => \$fpwword2,
-                        'copyright' => \$fpwcopyright);
+  my ($fpwtext, $fpwheading, $fpwword2, $fpwcopyright);
+  initialize_fpwparser('text' => \$fpwtext,
+                      'heading' => \$fpwheading,
+                      'word2' => \$fpwword2,
+                      'copyright' => \$fpwcopyright);
 
-   if (!GetOptions('hash_module=s' => \$hash_module)) {
-     exit 1;
-   }
+  if (!GetOptions('hash_module=s' => \$hash_module)) {
+    exit 1;
+  }
 
-   get_entry_headings('entries');
+  get_entry_headings('entries');
 
-   my $copyright_filename;
-   if ( $#ARGV < 1) {
-     die("$PROGRAM_NAME: Only a file ($ARGV[0]) is specified.");
-   }
-   $copyright_filename = $ARGV[$#ARGV];
-   register_copyright(\$fpwcopyright, $copyright_filename);
+  my $copyright_filename;
+  if ( $#ARGV < 1) {
+    die("$PROGRAM_NAME: Only a file ($ARGV[0]) is specified.");
+  }
+  $copyright_filename = $ARGV[$#ARGV];
+  register_copyright(\$fpwcopyright, $copyright_filename);
 
+  read_gaiji_chars();
 
-   my $wikipedia_filename = $ARGV[0];
+  my $wikipedia_filename = $ARGV[0];
 
-   if (not -e $wikipedia_filename) {
-     die("$PROGRAM_NAME: '$wikipedia_filename' does not exist.");
-   }
+  if (not -e $wikipedia_filename) {
+    die("$PROGRAM_NAME: '$wikipedia_filename' does not exist.");
+  }
 
-   my $xml = FileHandle->new();
-   if (!$xml->open("$wikipedia_filename", 'r')) {
-     die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $wikipedia_filename\n";
-   }
+  my $xml = FileHandle->new();
+  if (!$xml->open("$wikipedia_filename", 'r')) {
+    die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $wikipedia_filename\n";
+  }
 
-   my ($text, $heading);
-   my ($text_position, $heading_position);
+  my ($text, $heading);
+  my ($text_position, $heading_position);
 
-   if(verbose_mode ()) {
-     print "Skipping headers: $fpwwikipedia_conf{'skip_heading'}\n";
-     print "Skipping contents: $fpwwikipedia_conf{'skip_content'}\n";
-     print "Selecting headers: $fpwwikipedia_conf{'select_heading'}\n";
-     print "Selecting contents: $fpwwikipedia_conf{'select_content'}\n";
-   }
+  if(verbose_mode ()) {
+    print "Skipping headers: $fpwwikipedia_conf{'skip_heading'}\n";
+    print "Skipping contents: $fpwwikipedia_conf{'skip_content'}\n";
+    print "Selecting headers: $fpwwikipedia_conf{'select_heading'}\n";
+    print "Selecting contents: $fpwwikipedia_conf{'select_content'}\n";
+  }
 
-   PARSER: for (;;) {
-     $_ = '';
-     while (!(/<page>/)) {
-       $_ = $xml->getline();
-       if (!defined($_)) {
-         last PARSER;
-       }
-     }
+  PARSER: for (;;) {
+    $_ = '';
+    while (!(/<page>/)) {
+      $_ = $xml->getline();
+      if (!defined($_)) {
+        last PARSER;
+      }
+    }
 
-     $text = decode_utf8($_);
-     
-     while (!(/<\/page>/)) {
-       $_ = $xml->getline();
-       if (!defined($_)) {
-         die "$PROGRAM_NAME: Unexpected file end\n";
-       }
-       $text .= decode_utf8($_);
-     }
+    $text = decode_utf8($_);
+    
+    while (!(/<\/page>/)) {
+      $_ = $xml->getline();
+      if (!defined($_)) {
+        die "$PROGRAM_NAME: Unexpected file end\n";
+      }
+      $text .= decode_utf8($_);
+    }
 
-     $text =~ /<title>([^<]+)<\/title>/;
-     $heading = $1;
+    $text =~ /<title>([^<]+)<\/title>/;
+    $heading = $1;
 
-     # Skipping entries (for debug)
-     $page_count++;
-     if ($page_count <= $fpwwikipedia_conf{'skip_count'}) {
-       next;
-     }
+    # Skipping entries (for debug)
+    $page_count++;
+    if ($page_count <= $fpwwikipedia_conf{'skip_count'}) {
+      next;
+    }
 
-     if (!defined($entry_headings->get($heading))) {
-       if (verbose_mode()) {
-         print "Skipping page: $heading.\n";
-       }
-       next;
-     }
+    if (!defined($entry_headings->get($heading))) {
+      if (verbose_mode()) {
+        print "Skipping page: $heading.\n";
+      }
+      next;
+    }
 
-     # Workarounds
+    # Workarounds
 #     if ($heading =~ /^Ruby$/) {
 #       $text =~ s/\{\|([^\|]*\|[^\}]+\})/<nowiki>{|<\/nowiki>$1/g;
 #     # Fixed at 2007/10/01
@@ -125,49 +125,51 @@ require "fpwwikipedia_common";
 #       $text =~ s/ドラえもん\[\[Wii\]\]/ドラえもんWii/;
 #     } elsif ($heading =~ /^岩田正太$/) {
 #       $text =~ s/JaSRAサッカークラ\*2007年- \[\[ザスパ草津\]\]\nブ\]\]/JaSRAサッカークラブ]]\n/;
-#      # Fixed at 2007/08/22
-#      } elsif ($heading =~ /^予算$/) {
-#        $text =~ s/\[\[s:地方自治法 第二編 第九章 財務#211\|地方自治法第211条）/[[s:地方自治法 第二編 第九章 財務#211|地方自治法第211条]]）/;
-#      # Fixed at 2007/08/21
-#      } elsif ($heading =~ /^加茂田重政$/) {
-#        $text =~ s/\[\[加茂田組\|加茂田会\}\}/[[加茂田組|加茂田会]]/;
-#      } elsif ($heading =~ /^石川県の廃止市町村一覧$/) {
-#        $text =~ s/\[\[三谷村 \(石川県河北郡\)\|新設の為/[[三谷村 (石川県河北郡)|三谷村]]新設の為/;
-#      } elsif ($heading =~ /^ドメインハック$/) {
-#        $text =~ s/\[\[バーナー\|ウェブバーナー\]の/[[ウェブバーナー|バーナー]]の/;
-#      } elsif ($heading =~ /^チャールストン \(サウスカロライナ州\)$/) {
-#        $text =~ s/\[\[:en:University of Illinois Press\|U. of Illinois Press, /[[:en:University of Illinois Press|U. of Illinois Press]], /;
-#        $text =~ s/\[\[:en:University Press of Mississippi\|U. Press of Mississippi, /[[:en:University Press of Mississippi|U. Press of Mississippi]], /;
-#      # Fixed at 2007/07/09
-#      } elsif ($heading =~ /^単位一覧$/) {
-#        $text =~ s/(<sup>229376<\/sup>\n\|)-/$1\}/g;
+#     # Fixed at 2007/08/22
+#     } elsif ($heading =~ /^予算$/) {
+#       $text =~ s/\[\[s:地方自治法 第二編 第九章 財務#211\|地方自治法第211条）/[[s:地方自治法 第二編 第九章 財務#211|地方自治法第211条]]）/;
+#     # Fixed at 2007/08/21
+#     } elsif ($heading =~ /^加茂田重政$/) {
+#       $text =~ s/\[\[加茂田組\|加茂田会\}\}/[[加茂田組|加茂田会]]/;
+#     } elsif ($heading =~ /^石川県の廃止市町村一覧$/) {
+#       $text =~ s/\[\[三谷村 \(石川県河北郡\)\|新設の為/[[三谷村 (石川県河北郡)|三谷村]]新設の為/;
+#     } elsif ($heading =~ /^ドメインハック$/) {
+#       $text =~ s/\[\[バーナー\|ウェブバーナー\]の/[[ウェブバーナー|バーナー]]の/;
+#     } elsif ($heading =~ /^チャールストン \(サウスカロライナ州\)$/) {
+#       $text =~ s/\[\[:en:University of Illinois Press\|U. of Illinois Press, /[[:en:University of Illinois Press|U. of Illinois Press]], /;
+#       $text =~ s/\[\[:en:University Press of Mississippi\|U. Press of Mississippi, /[[:en:University Press of Mississippi|U. Press of Mississippi]], /;
+#     # Fixed at 2007/07/09
+#     } elsif ($heading =~ /^単位一覧$/) {
+#       $text =~ s/(<sup>229376<\/sup>\n\|)-/$1\}/g;
 #     }
 
 
-     print encode_utf8("Entry: $page_count; $heading\n");
-     $heading_position = register_heading(\$fpwheading, $heading);
-     $text_position = register_content(\$fpwtext, $heading, $text);
-     my @headings = expand_search_entry($heading, $text);
-     register_search_entry(\$fpwword2, \@headings, $heading_position, $text_position);
+    print encode_utf8("Entry: $page_count; $heading\n");
+    $heading_position = register_heading(\$fpwheading, $heading);
+    $text_position = register_content(\$fpwtext, $heading, $text);
+    my @headings = expand_search_entry($heading, $text);
+    register_search_entry(\$fpwword2, \@headings, $heading_position, $text_position);
 
-     # Check number of entries (for debug)
-     $entry_count++;
-     if ($fpwwikipedia_conf{'entry_count'} > 0
-         && $entry_count >= $fpwwikipedia_conf{'entry_count'}) {
-       last;
-     }
-   }
+    # Check number of entries (for debug)
+    $entry_count++;
+    if ($fpwwikipedia_conf{'entry_count'} > 0
+        && $entry_count >= $fpwwikipedia_conf{'entry_count'}) {
+      last;
+    }
+  }
 
-   $entry_headings->close();
-   $xml->close();
+  $entry_headings->close();
+  $xml->close();
 
-   finalize_fpwparser('text' => \$fpwtext,
-                      'heading' => \$fpwheading,
-                      'word2' => \$fpwword2,
-                      'copyright' => \$fpwcopyright);
-   
-   printf(encode_utf8("$PROGRAM_NAME: Elapsed time     : %8dsec.\n"), time - $time);
-   printf(encode_utf8("$PROGRAM_NAME: Number of entries: %8d\n"), $entry_count);
+  make_gaiji_map();
+
+  finalize_fpwparser('text' => \$fpwtext,
+                     'heading' => \$fpwheading,
+                     'word2' => \$fpwword2,
+                     'copyright' => \$fpwcopyright);
+  
+  printf(encode_utf8("$PROGRAM_NAME: Elapsed time     : %8dsec.\n"), time - $time);
+  printf(encode_utf8("$PROGRAM_NAME: Number of entries: %8d\n"), $entry_count);
 }
 
 
@@ -196,10 +198,9 @@ sub register_copyright {
 sub register_heading {
   my ($fpwheading, $heading) = @_;
   
-  $heading = utf2euc(decode_entity($heading));
   $$fpwheading->new_entry()
       || die "$PROGRAM_NAME: " . $$fpwheading->error_message() . "\n";
-  $$fpwheading->add_text($heading)
+  add_text_with_gaiji($fpwheading, decode_entity($heading))
       || die "$PROGRAM_NAME: " . $$fpwheading->error_message() . "\n";
   return $$fpwheading->entry_position();
 }
@@ -242,31 +243,14 @@ sub register_search_entry {
   }
 }
 
-sub utf2euc {
-  my ($text) = @_;
-
-  $text =~ s/$utf2euc_regexp/$utf2euc_table{$1}/g;
-
-  $text = encode('euc-jp', $text);
-  # $text =~ s/\x8F[\xA1-\xFE][\xA1-\xFE]|\x8E[\xE0-\xFE]/?/g;
-  $text =~ s/\x8F[\xA1-\xFE][\xA1-\xFE]/?/g;
-
-  # Workaround
-  $text =~ s/\x7f/?/g;
-
-  return $text;
-}
-
-
 sub register_content {
   my ($fpwtext, $heading, $content) = @_;
   my $formatted_content;
-  my $converted_heading = utf2euc(decode_entity($heading));
-  
+
   ($$fpwtext->new_entry()
    && $$fpwtext->add_entry_tag(unpack('H*', encode_utf8($heading)))
    && $$fpwtext->add_keyword_start()
-   && $$fpwtext->add_text($converted_heading)
+   && add_text_with_gaiji($fpwtext, decode_entity($heading))
    && $$fpwtext->add_keyword_end()
    && $$fpwtext->add_newline()
    && $$fpwtext->add_indent_level(2))
@@ -448,11 +432,10 @@ sub register_content {
         #   print encode_utf8("found not replace template = " . $text . "\n");
         # }
 ##### M.ITO ) DEBUG #####
-        $$fpwtext->add_text(utf2euc($text))
+        add_text_with_gaiji($fpwtext, $text)
             || register_content_error ($fpwtext, $heading, $content, $formatted_content);
       } elsif ($fpwwikipedia_conf{'enable_math'}) {
         $$fpwtext->add_inline_color_graphic_start("math_$1")
-            # && $$fpwtext->add_text("[math]")
             && $$fpwtext->add_inline_color_graphic_end()
             || register_content_error ($fpwtext, $heading, $content, $formatted_content);
       }
@@ -730,9 +713,167 @@ sub expand_search_entry {
 
   # Decode entity and characte references, and convert encoding
   foreach  $heading (@keys) {
-    $heading = utf2euc(decode_entity($heading));
+    $heading = internal2euc(replace_use_table(decode_entity($heading)));
     push (@results, $heading);
   }
 
   return uniq_array(@results);
+}
+
+sub replace_use_table {
+  my ($text) = @_;
+  $text =~ s/$utf2euc_regexp/$utf2euc_table{$1}/g;
+  return $text;
+}
+
+sub internal2euc {
+  my ($text) = @_;
+  $text = encode('euc-jp', $text);
+  # $text =~ s/\x8F[\xA1-\xFE][\xA1-\xFE]|\x8E[\xE0-\xFE]/?/g;
+  $text =~ s/\x8F[\xA1-\xFE][\xA1-\xFE]/?/g;
+  # Workaround
+  $text =~ s/\x7f/?/g;
+  return $text;
+}
+
+my %half_gaiji_chars = ();
+my %full_gaiji_chars = ();
+my %gaiji_used_chars = ();
+my %gaiji_not_found_chars = ();
+
+sub read_gaiji_chars {
+  my $fh = FileHandle->new();
+  if (!-e $half_char_name_file_name) {
+    die "$PROGRAM_NAME: Half character name file does not exist: $half_char_name_file_name\n";
+  }
+  if (!$fh->open($half_char_name_file_name, 'r')) {
+    die "$PROGRAM_NAME: Failed to open the half character name file, $ERRNO: $half_char_name_file_name\n";
+  }
+  while (defined($_ = $fh->getline())) {
+    $_ = decode_utf8($_);
+    chomp;
+    if (/^([^\t]+)\t([^\t]+)$/) {
+      $half_gaiji_chars{$1} = $2;
+    } else {
+      die "$PROGRAM_NAME: Invalid line in the half character name file: $_\n";
+    }
+  }
+  $fh->close();
+  if (!-e $full_char_name_file_name) {
+    die "$PROGRAM_NAME: Full character name file does not exist: $full_char_name_file_name\n";
+  }
+  if (!$fh->open($full_char_name_file_name, 'r')) {
+    die "$PROGRAM_NAME: Failed to open the full character name file, $ERRNO: $full_char_name_file_name\n";
+  }
+  while (defined($_ = $fh->getline())) {
+    $_ = decode_utf8($_);
+    chomp;
+    if (/^([^\t]+)\t([^\t]+)$/) {
+      $full_gaiji_chars{$1} = $2;
+    } else {
+      die "$PROGRAM_NAME: Invalid line in the full character name file: $_\n";
+    }
+  }
+  $fh->close();
+}
+
+sub add_text_with_gaiji {
+  my ($fpwtext, $text) = @_;
+  $text = replace_use_table($text);
+  my $euc = internal2euc($text);
+  my $text_euc = decode('euc-jp', $euc);
+  if ($text eq $text_euc) {
+    return $$fpwtext->add_text($euc);
+  }
+  #
+  if (length($text) != length($text_euc) ) {
+    die("length different.\n$text\n$text_euc\nlength: " . length($text) . " != " . length($text_euc) . "\n");
+  }
+  my $index = 0;
+  my $found = index($text_euc, '?', $index);
+  while ($found >= 0) {
+    if ($found > $index) {
+      my $subtext = substr($text_euc, $index, $found - $index);
+      $$fpwtext->add_text(encode('euc-jp', $subtext))
+          || die "$PROGRAM_NAME: " . $$fpwtext->error_message() . "\n";
+    }
+    my $char = substr($text, $found, 1);
+    my $code = ord($char);
+    if ($char eq '?') {
+      $$fpwtext->add_text(encode('euc-jp', '?'))
+          || die "$PROGRAM_NAME: " . $$fpwtext->error_message() . "\n";
+    } elsif (exists $half_gaiji_chars{$code}) {
+      $$fpwtext->add_half_user_character(encode('euc-jp', $code))
+          || die "$PROGRAM_NAME: " . $$fpwtext->error_message() . "\n";
+      $gaiji_used_chars{$code} = 1;
+    } elsif (exists $full_gaiji_chars{$code}) {
+      $$fpwtext->add_full_user_character(encode('euc-jp', $code))
+          || die "$PROGRAM_NAME: " . $$fpwtext->error_message() . "\n";
+      $gaiji_used_chars{$code} = 1;
+    } else {
+      $$fpwtext->add_text(encode('euc-jp', '?'))
+          || die "$PROGRAM_NAME: " . $$fpwtext->error_message() . "\n";
+      if (!exists $gaiji_not_found_chars{$code}) {
+        $gaiji_not_found_chars{$code} = 1;
+      } else {
+        $gaiji_not_found_chars{$code} += 1;
+      }
+    }
+    $index = $found + 1;
+    $found = index($text_euc, '?', $index);
+  }
+  if ($index < length($text_euc)) {
+    my $subtext = substr($text_euc, $index);
+    $$fpwtext->add_text(encode('euc-jp', $subtext))
+        || die "$PROGRAM_NAME: " . $$fpwtext->error_message() . "\n";
+  }
+  return 1;
+}
+
+sub make_gaiji_map {
+  my $fh = FileHandle->new();
+  #
+  if (!$fh->open($work_directory . '/gaiji.map', 'w')) {
+    die "$PROGRAM_NAME: Failed to open the gaiji map file, $ERRNO: $work_directory/gaiji.map'\n";
+  }
+  while (my ($key, $value) = each(%half_gaiji_chars)){
+    my $line = sprintf("h%s\tu%04X\n", $value, $key);
+    $fh->print(encode_utf8($line));
+  }
+  while (my ($key, $value) = each(%full_gaiji_chars)){
+    my $line = sprintf("z%s\tu%04X\n", $value, $key);
+    $fh->print(encode_utf8($line));
+  }
+  $fh->close();
+  #
+  if (!$fh->open($work_directory . '/gaiji_used.txt', 'w')) {
+    die "$PROGRAM_NAME: Failed to open the gaiji used file, $ERRNO: $work_directory/gaiji_used.txt'\n";
+  }
+  foreach my $key (sort {$a <=> $b} keys %gaiji_used_chars) {
+    $fh->print(encode_utf8("$key\n"));
+  }
+  $fh->close();
+  #
+  if (!$fh->open($work_directory . '/gaiji_not_used.txt', 'w')) {
+    die "$PROGRAM_NAME: Failed to open the gaiji not used file, $ERRNO: $work_directory/gaiji_not_used.txt'\n";
+  }
+  foreach my $key (sort {$a <=> $b} keys %half_gaiji_chars) {
+    if (!exists $gaiji_used_chars{$key}) {
+      $fh->print(encode_utf8("$key\t".chr($key)."\n"));
+    }
+  }
+  foreach my $key (sort {$a <=> $b} keys %full_gaiji_chars) {
+    if (!exists $gaiji_used_chars{$key}) {
+      $fh->print(encode_utf8("$key\t".chr($key)."\n"));
+    }
+  }
+  $fh->close();
+  #
+  if (!$fh->open($work_directory . '/gaiji_not_found.txt', 'w')) {
+    die "$PROGRAM_NAME: Failed to open the gaiji not found file, $ERRNO: $work_directory/gaiji_not_found.txt'\n";
+  }
+  foreach my $key (sort {$a <=> $b} keys %gaiji_not_found_chars) {
+    $fh->print(encode_utf8("$key\t".chr($key)."\t".$gaiji_not_found_chars{$key}."\n"));
+  }
+  $fh->close();
 }

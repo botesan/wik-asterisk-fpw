@@ -8,6 +8,7 @@ wikipedia-fpw が GPL なのでライセンスを引き継いでいますが、�
 
 変換スクリプトは kazuhiro さんが作成された wikipedia-fpw を私が改造したものです。
 そこから見直しを行っています。
+主に外字mapの対応（外字自体はクエスチョンマーク表示）や各種テンプレートの対応です。
 
 [Kazuhiro's blog - wikipedia-fpw](http://ikazuhiro.s206.xrea.com/staticpages/index.php/wikipedia-fpw)
 
