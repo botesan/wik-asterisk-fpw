@@ -428,7 +428,7 @@ sub register_content {
 
       if ($text !~ /<math (.+)>/) {
 ##### M.ITO ( DEBUG #####
-        # if ($text =~ /<\@([^:\@>]+)((:|\@)[^\@]+)?\@>/) {
+        # if ($text =~ /\{\@([^:\@\}]+)((:|\@)[^\@\}]+)?\@\}/) {
         #   print encode_utf8("found not replace template = " . $text . "\n");
         # }
 ##### M.ITO ) DEBUG #####

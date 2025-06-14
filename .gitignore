@@ -3,6 +3,7 @@
 *.tar.bz2
 *.tar.lzma
 *.tar.xz
+*.bz2
 *.zip
 *.dep
 # directories
