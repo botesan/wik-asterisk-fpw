@@ -7417,7 +7417,6 @@
 52981	gaiji/q16F.xbm
 52983	gaiji/q16F.xbm
 52992	gaiji/q16F.xbm
-53000	gaiji/q16F.xbm
 53011	gaiji/q16F.xbm
 53020	gaiji/q16F.xbm
 53076	gaiji/q16F.xbm
@@ -7629,6 +7628,7 @@
 128640	gaiji/q16F.xbm
 128663	gaiji/q16F.xbm
 128664	gaiji/q16F.xbm
+131094	gaiji/q16F.xbm
 131111	gaiji/q16F.xbm
 131136	gaiji/q16F.xbm
 131173	gaiji/q16F.xbm

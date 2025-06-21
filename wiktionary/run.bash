@@ -27,9 +27,7 @@ case $1 in
         cd $FPW_DIR
         ERROR_LOG=../error.txt
         TRACE_LOG=../log.txt
-        (time PERL5LIB=. fpwmake) 2>$ERROR_LOG | tee $TRACE_LOG
-        (time PERL5LIB=. fpwmake catalogs) 2>>$ERROR_LOG | tee -a $TRACE_LOG
-        (time PERL5LIB=. fpwmake package) 2>>$ERROR_LOG | tee -a $TRACE_LOG
+        (time PERL5LIB=. fpwmake package) 2>$ERROR_LOG | tee $TRACE_LOG
         cd ..
         rm -rf $DIC_DIR
     fi

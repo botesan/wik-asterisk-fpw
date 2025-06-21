@@ -683,10 +683,71 @@ sub expand_search_entry {
   # Expand search entry by yomigana
   if ($fpwwikipedia_conf{'yomigana'}) {
     my $regexp = "^([\\p{InHiragana}\\p{InKatakana}－ -]+)";
-
-    if ($text =~ /'''[^']+?'''(?:』)?(?:　| )*（(?:''')?(.+?)）/) {
+    if ($text =~ /'''[^']+?'''(?:』)?(?:　| )*[（()](?:''')?(?:\[\[)?(.+?)[)）]/) {
       if ($1 =~ /$regexp/) {
-        push(@keys, encode_utf8($1));
+        push(@keys, $1);
+##### M.ITO ( DEBUG #####
+        print encode_utf8("push key: $1\n");
+##### M.ITO ) DEBUG #####
+      }
+    }
+    if ($key =~ /^.*\p{sc=Han}.*$/) {
+      my $kana = '[\p{sc=Hiragana}\p{sc=Katakana}ー]+';
+      if ($text =~ /\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:\[\[)?($kana)(?:\]\])?(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/) {
+        push(@keys, $1);
+##### M.ITO ( DEBUG #####
+        print encode_utf8("push key 1: $1\n");
+##### M.ITO ) DEBUG #####
+      }
+      if ($text =~ /\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:\[\[)?($kana)(?:\]\])?\|(?:\[\[)?(\p{sc=Hiragana}+)(?:\]\])?(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/) {
+        push(@keys, $1);
+        push(@keys, $2);
+##### M.ITO ( DEBUG #####
+        print encode_utf8("push key 2: $1, $2\n");
+##### M.ITO ) DEBUG #####
+      }
+      if ($text =~ /\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:\[\[)?($kana)(?:\]\])?\|(?:\[\[)?(\p{sc=Hiragana}+)(?:\]\])?\|(?:\[\[)?(\p{sc=Hiragana}+)(?:\]\])?(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/) {
+        push(@keys, $1);
+        push(@keys, $2);
+        push(@keys, $3);
+##### M.ITO ( DEBUG #####
+        print encode_utf8("push key 3: $1, $2, $3\n");
+##### M.ITO ) DEBUG #####
+      }
+      if ($text =~ /\{\{wagokanji of\|([^\|\{\}]+)\}\}/) {
+        push(@keys, $1);
+##### M.ITO ( DEBUG #####
+        print encode_utf8("push key 4: $1\n");
+##### M.ITO ) DEBUG #####
+      }
+      if ($text =~ /\{\{jachars?(?:\|\p{sc=Han}+)*\}\}\s*[（(]\s*(?:\[\[)?($kana)(?:\]\])?\s*[、)）]/) {
+        push(@keys, $1);
+##### M.ITO ( DEBUG #####
+        print encode_utf8("push key 5: $1\n");
+##### M.ITO ) DEBUG #####
+      }
+      if ($text =~ /\{\{ja-pron(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|($kana)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/) {
+        push(@keys, $1);
+##### M.ITO ( DEBUG #####
+        print encode_utf8("push key 6: $1\n");
+##### M.ITO ) DEBUG #####
+      }
+      if ($text =~ /\{\{head(?:\|[^\|\{\}]*)*\|tr=($kana)(?:\|[^\|\{\}]*)*\}\}/) {
+        push(@keys, $1);
+##### M.ITO ( DEBUG #####
+        print encode_utf8("push key 7: $1\n");
+##### M.ITO ) DEBUG #####
+      } elsif ($text =~ /\{\{head(?:\|[^\|\{\}]*)*(?:\|head=\{\{jachars\}\})?(?:\|[^\|\{\}]*)*\}\}\s*[（(]?\s*(?:\[\[)?($kana)(?:\]\])?\s*[、)）]/) {
+        push(@keys, $1);
+##### M.ITO ( DEBUG #####
+        print encode_utf8("push key 8: $1\n");
+##### M.ITO ) DEBUG #####
+      }
+      if ($text =~ /\{\{lang(?:\|[^\|\{\}]*)*'''[^']*'''(?:\|[^\|\{\}]*)*\}\}\s*[（(]\s*(?:\[\[)?($kana)(?:\]\])?\s*[、)）]/) {
+        push(@keys, $1);
+##### M.ITO ( DEBUG #####
+        print encode_utf8("push key 9: $1\n");
+##### M.ITO ) DEBUG #####
       }
     }
   }

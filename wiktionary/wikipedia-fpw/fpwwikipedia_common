@@ -174,6 +174,7 @@ sub replace_template {
   $text =~ s/\{\{デフォルトソート:[^\{\}]+\}\}//g;
   $text =~ s/\{\{kana-DEFAULTSORT(\|[^\{\}]+)?\}\}//g;
   $text =~ s/\{\{[Ww]ikipedia(\|[^\{\}]+)?\}\}//g;
+  $text =~ s/\{\{WiktionaryPage\}\}//g;
   $text =~ s/\{\{infl\|[^\{\}]+(?:\|\|[^\{\}]+)?\}\}/$heading/g;
   $text =~ s/\{\{head\|[^\{\}]+(?:\|\|[^\{\}]+)?\}\}/$heading/g;
   # 情報付与関連 )
@@ -189,12 +190,19 @@ sub replace_template {
   # 借用（bor）借用元は言語変換テンプレートに変換
   $text =~ s/\{\{bor\|[a-z-]+\|([a-z-]+)\|([^=\|\{\}]+)\}\}/[[{{$1}}]] [[$2]] からの[[借用語]]/g;
   $text =~ s/\{\{bor\|[a-z-]+\|([a-z-]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\}\}/[[{{$1}}]] [[$2|$3]] からの[[借用語]]/g;
+  # desc 言語は言語変換テンプレートに変換
+  $text =~ s/\{\{desc\|([a-z-]+)\|-\}\}/{{$1}}:/g;
+  $text =~ s/\{\{desc\|([a-z-]+)\|([^=\|\{\}]+)\}\}/{{$1}}: [[$2]]/g;
+  $text =~ s/\{\{desc\|bor=1\|([a-z-]+)\|([^=\|\{\}]+)\}\}/→{{$1}}: [[$2]]/g;
+  $text =~ s/\{\{desc\|([a-z-]+)\|([^=\|\{\}]+)\|bor=1\}\}/→{{$1}}: [[$2]]/g;
+  $text =~ s/\{\{desc\|([a-z-]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\}\}/{{$1}}: [[$2]], [[$3]]/g;
   # 言語変換
   $text =~ s/\{\{jan?\}\}/日本語/g;
   $text =~ s/\{\{ojp\}\}/古典日本語/g;
   $text =~ s/\{\{ryu\}\}/沖縄語/g;
   $text =~ s/\{\{ain\}\}/アイヌ語/g;
   $text =~ s/\{\{eng?\}\}/英語/g;
+  $text =~ s/\{\{enm\}\}/中英語/g;
   $text =~ s/\{\{de\}\}/ドイツ語/g;
   $text =~ s/\{\{hu\}\}/ハンガリー語/g;
   $text =~ s/\{\{fr\}\}/フランス語/g;
@@ -253,6 +261,7 @@ sub replace_template {
   $text =~ s/\{\{alter\}\}/異表記・別形/g;
   $text =~ s/\{\{desc\}\}/諸言語への影響/g;
   $text =~ s/\{\{wago\}\}/和語の漢字表記/g;
+  $text =~ s/\{\{decl\}\}/格変化/g;
   # context
   $text =~ s/\{\{(?:label|lb|タグ)\|([^\|\{\}]+)((?:\|[^=\{\}]+)+)\}\}/\{\{context\|lang=$1$2\}\}/g;
   $text =~ s/\{\{context(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:他動詞|transitive|transitive\+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/(他動詞) /g;
@@ -367,6 +376,8 @@ sub replace_template {
   $text =~ s/\{\{t[-+]?\|[a-z]*\|([^\|\{\}]+)\|m(?:\|[^\{\}]*)?\}\}/$1 男性/g;
   $text =~ s/\{\{t[-+]?\|[a-z]*\|([^\|\{\}]+)(?:\|[^\{\}]*)*\|tr=([^=\|\{\}]+)(?:\|[^\{\}]*)*\}\}/$1（$2）/g;
   $text =~ s/\{\{t[-+]?\|[a-z]*\|([^\|\{\}]+)(?:\|[^\{\}]*)?\}\}/$1/g;
+  # trans_link-link
+  $text =~ s/\{\{trans_link\|[a-z]*\|([^\|\{\}]+)\}\}/$1/g;
   # supra
   $text =~ s!\{\{supra\|([^\|\{\}]+)\}\}!<sup>$1</sup>!g;
   # jachar(s) / zhchar(s)
@@ -382,12 +393,12 @@ sub replace_template {
   $text =~ s/\{\{(?:ja|zh)chars\}\}/'[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']][['.substr($heading,3,1).']][['.substr($heading,4,1).']][['.substr($heading,5,1).']]'/eg if (length($heading) == 6);
   # wagokanji of
   $text =~ s/\{\{wagokanji of\|([^\|\{\}]+)\}\}/[[$1]]の漢字表記。/g;
-  # ja-headword系をまとめる（今わかっている分 ja-(noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)）
+  # ja-headword系をまとめる（今わかっている分 ja-(noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)）
   if ($heading =~ /^([\p{sc=Hiragana}\p{sc=Katakana}ー]+)$/) {
-    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)\}\}/$heading/g;
-    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1】/g;
-    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1・$2】/g;
-    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1・$2・$3】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)\}\}/$heading/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1・$2】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1・$2・$3】/g;
   } elsif ($heading =~ /^.*\p{sc=Han}.*$/) {
     my $replaced;
     if (length($heading) == 1) {
@@ -455,6 +466,14 @@ sub replace_template {
     $text =~ s!\{\{ja-kanjitab\|([^=\|\{\}]+)2\|yomi=jukujikun\|?\}\}!"===この単語の[[漢字]]===\n\*[[".substr($heading,0,1)."]] [[".substr($heading,1,1)."]]（$1）[[熟字訓]]\n"!eg;
   } elsif ($heading =~ /^\p{sc=Han}{3}$/) {
     $text =~ s!\{\{ja-kanjitab\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|yomi=o[n3]?(?:,on?,on?)?\|?\}\}!"===この単語の[[漢字]]===\n\*[[".substr($heading,0,1)."]]（$1）[[音読み]]\n\*[[".substr($heading,1,1)."]]（$2）[[音読み]]\n\*[[".substr($heading,2,1)."]]（$3）[[音読み]]\n"!eg;
+  } elsif ($heading =~ /^\p{sc=Han}{4}$/) {
+    $text =~ s!\{\{ja-kanjitab\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|yomi=o[n4]?(?:,on?,on?,on?)?\|?\}\}!"===この単語の[[漢字]]===\n\*[[".substr($heading,0,1)."]]（$1）[[音読み]]\n\*[[".substr($heading,1,1)."]]（$2）[[音読み]]\n\*[[".substr($heading,2,1)."]]（$3）[[音読み]]\n\*[[".substr($heading,3,1)."]]（$4）[[音読み]]\n"!eg;
+  } elsif ($heading =~ /^\p{sc=Han}\p{sc=Hiragana}+$/) {
+    $text =~ s!\{\{ja-kanjitab\|([^=\|\{\}]+)\|yomi=k\|?\}\}!"===この単語の[[漢字]]===\n\*[[".substr($heading,0,1)."]]（$1）[[訓読み]]\n"!eg;
+  } elsif ($heading =~ /^\p{sc=Han}{2}\p{sc=Hiragana}+$/) {
+    $text =~ s!\{\{ja-kanjitab\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|yomi=k\|?\}\}!"===この単語の[[漢字]]===\n\*[[".substr($heading,0,1)."]]（$1）[[訓読み]]\n\*[[".substr($heading,1,1)."]]（$2）[[訓読み]]\n"!eg;
+  } elsif ($heading =~ /^\p{sc=Han}{3}\p{sc=Hiragana}+$/) {
+    $text =~ s!\{\{ja-kanjitab\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|yomi=k\|?\}\}!"===この単語の[[漢字]]===\n\*[[".substr($heading,0,1)."]]（$1）[[訓読み]]\n\*[[".substr($heading,1,1)."]]（$2）[[訓読み]]\n\*[[".substr($heading,2,1)."]]（$3）[[訓読み]]\n"!eg;
   }
   $text =~ s!\{\{kanji header\|部画=(\p{sc=Han}):(\d+)\+(\d+)\}\}!"==漢字==\n$heading\n*[[部首]]：[[$1]]+$3画\n*[[総画]]：".($2+$3)."画\n"!eg;
   $text =~ s!\{\{部首\|(?:([^=\|\[\]\{\}]+)|\[\[([^\[\]\{\}]*)\]\])(?:\|)?\}\}![[部首]]：[[$1$2]]!g;
