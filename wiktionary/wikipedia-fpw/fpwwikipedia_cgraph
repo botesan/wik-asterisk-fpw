@@ -280,29 +280,12 @@ sub get_maths {
   }
   $text = $tmp . $text;
 
-  # Format supported templates.
-  $text = replace_template($heading, $text);
- 
-  # Remove templates.
-  while ($text =~ s/\{{3}[^\{\}]*\}{3}//sg) {}
-  while ($text =~ s/\{\{[^\{\}]*\}\}//sg) {}
-
   # Detect math formula
   $tmp = '';
   while ($text =~ s/^(.*?)<math( [^<>]*?)?>(.*?)<\/math>//s) {
     $tmp .= "$1<math ".unpack('H*', encode_utf8($3)).'>';
   }
   $text = $tmp . $text;
-
-  # Remove tables
-  if ($text =~ /\{\|/) {
-    $text = format_content_table($text);
-  }
-
-  # Remove html tables
-  if ($text =~ /<table/) {
-    $text = format_content_table_html($text);
-  }
 
   my @results = ();
   while ($text =~ s/.*?<math (.*?)>//s) {

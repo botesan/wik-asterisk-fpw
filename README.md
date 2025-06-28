@@ -1,20 +1,24 @@
 # wik-asterisk-fpw
 
-wikipedia-fpw を使用した Wik*（現状 Wiktionary のみ）の EPWING 辞書変換の Docker 環境です。
+wikipedia-fpw を使用した Wik*（現状 Wiktionary（日本語） のみ）の EPWING 辞書変換の Docker 環境です。
 
 wikipedia-fpw が GPL なのでライセンスを引き継いでいますが、問題があれば削除等します。
 
 ## wikipedia-fpw
 
 変換スクリプトは kazuhiro さんが作成された wikipedia-fpw を私が改造したものです。
-そこから見直しを行っています。
-主に外字mapの対応（外字自体はクエスチョンマーク表示）や各種テンプレートの対応です。
 
 [Kazuhiro's blog - wikipedia-fpw](http://ikazuhiro.s206.xrea.com/staticpages/index.php/wikipedia-fpw)
 
-以前の改造スクリプトは下記からダウンロードできます。
+このリポリジトリ以前の改造スクリプト（パッチファイル）は下記からダウンロードできます。
 
 [ソフト - Masatoshi Ito's Home Page](https://mito-homepage.web.app/soft)
+
+## 改造内容
+
+主に外字mapの対応（外字自体はクエスチョンマーク表示）や各種Wiktionary用テンプレートの対応です。
+
+また、ふりがな登録処理をWiktionary用に追加修正しています。
 
 ## 実行方法
 
