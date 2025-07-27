@@ -278,6 +278,7 @@ sub register_content {
   my $written_level = 0;
   my $ref_level = 0;
   my $text_count = 0;
+  my @num_items = (0, 0, 0, 0, 0, 0, 0);
 
   foreach $text (@texts) {
 
@@ -402,13 +403,15 @@ sub register_content {
     } else {
       if ($indent_level != $indent_last) {
         $indent_last = $indent_level;
-##### M.ITO ( DEBUG #####
-        # if ($heading =~ /^ダイヤモンド$/) {
-        #   print "add_indent_level indent_level=" . $indent_level . ":" . $text . "\n";
-        # }
-##### M.ITO ) DEBUG #####
         $$fpwtext->add_indent_level ($indent_last)
             || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+        splice(@num_items, $indent_last + 1);
+        splice(@num_items, @num_items, 0, (0) x (6 - @num_items));
+##### M.ITO ( DEBUG #####
+        # if ($heading =~ /^mixture$/) {
+        #   print "splice indent_last=$indent_last: \@num_items=(@num_items)\n";
+        # }
+##### M.ITO ) DEBUG #####
       }
 
       # Write opening tags.
@@ -426,7 +429,16 @@ sub register_content {
         }
       }
 
-      if ($text !~ /<math (.+)>/) {
+      if ($text eq '<N>') {
+        $num_items[$indent_last]++;
+##### M.ITO ( DEBUG #####
+        # if ($heading =~ /^mixture$/) {
+        #   print "add_text_with_gaiji indent_last=$indent_last: \@num_items=(@num_items)\n";
+        # }
+##### M.ITO ) DEBUG #####
+        add_text_with_gaiji($fpwtext, $num_items[$indent_last].'.')
+            || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+      } elsif ($text !~ /<math (.+)>/) {
 ##### M.ITO ( DEBUG #####
         # if ($text =~ /\{\@([^:\@\}]+)((:|\@)[^\@\}]+)?\@\}/) {
         #   print encode_utf8("found not replace template = " . $text . "\n");
@@ -603,16 +615,13 @@ sub format_content {
   $text =~ s/^;(.+?\]\]):(.*)/<DT>$1<\/DT>\n<DD>$2<\/DD>/mg;
   $text =~ s/^;(.*)/<DT>$1<\/DT>/mg;
 
-  # Format indents
+  # Format itemize / indents
 
-  # while ($text =~ s/^(:*):/$1<IND>/mg) {}
-  $text =~ s/^(:+)/'<IND>' x length($1)/mge;
-
-  # Format itemize
-  
   # while ($text =~ s/^([*\#]*)([*\#])((<IND>)*)/$1<IND>$3$2/mg) {}
-  $text =~ s/^([*\#]*\*)/'<IND>' x length($1) . '・'/mge;
-  $text =~ s/^([*\#]+)/'<IND>' x length($1)/mge;
+  $text =~ s/^([*\#:]*\*)([^*\#:])/'<IND>' x length($1) . "・$2"/mge;
+  $text =~ s/^([*\#:]*\#)([^*\#:])/'<IND>' x length($1) . "<N>$2"/mge;
+  $text =~ s/^([*\#:]+)([^*\#:])/'<IND>' x length($1) . $2/mge;
+  $text =~ s/^([*\#:]+:)/'<IND>' x length($1)/mge;
 
   $text =~ s/^(<IND>.*)$/$1<BR>/mg;
  
