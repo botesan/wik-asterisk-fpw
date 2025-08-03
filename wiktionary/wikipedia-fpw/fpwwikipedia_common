@@ -14,7 +14,7 @@ require v5.6;
 use utf8;
 use strict;
 
-use Encode qw/decode_utf8/;
+use Encode qw/decode_utf8 encode_utf8/;
 
 sub decode_entity {
   my $text = $_[0];
@@ -29,7 +29,7 @@ sub decode_entity {
         $text .= '?';
       }
     } elsif ($_ =~ /&\#([0-9]+|x[0-9a-fA-F]+);/) {
-      $text .= decode_entitry_internal($1);
+      $text .= _decode_entitry_internal($1);
     } else {
       $text .= $_;
     }
@@ -38,7 +38,7 @@ sub decode_entity {
   return $text;
 }
 
-sub decode_entitry_internal {
+sub _decode_entitry_internal {
   my $entity = $_[0];
 
   if ($entity =~ /^x(.*)/) {
@@ -48,7 +48,7 @@ sub decode_entitry_internal {
   return chr($entity);
 }
 
-sub format_content_table_replace {
+sub _format_content_table_replace {
   my $text = $_[0];
 
   # th td one line replace
@@ -87,31 +87,31 @@ sub format_content_table {
   $text = '';
   foreach $_ (@texts) {
     if ($_ =~ /^\{\|[^{]*?\n/) {
-      $text .= format_content_table_replace($_);
+      $text .= _format_content_table_replace($_);
       $level++;
     } elsif ($_ eq '|}') {
       if ($level == 0) {
-        format_content_warning ("opening table tag recognition is failed");
-        $text .= format_content_table_replace($_);
+        _format_content_warning ("opening table tag recognition is failed");
+        $text .= _format_content_table_replace($_);
       }	else {
-        $text .= format_content_table_replace($_);
+        $text .= _format_content_table_replace($_);
         $level--;
       }
     } elsif ($level == 0) {
       $text .= $_;
     } else {
-      $text .= format_content_table_replace($_);
+      $text .= _format_content_table_replace($_);
     }
   }
 
   if ($level) {
-    format_content_warning("closing table tag recognition is failed");
+    _format_content_warning("closing table tag recognition is failed");
   }
 
   return $text;
 }
 
-sub format_content_table_html_replace {
+sub _format_content_table_html_replace {
   my $text = $_[0];
   $text =~ s!<table[^<]*?>!<_BR>-----table tag-----<_BR>!sg;
   $text =~ s!</table>!-------------------<_BR>!sg;
@@ -142,25 +142,25 @@ sub format_content_table_html {
   $text = '';
   foreach $_ (@texts) {
     if ($_ =~ /^<table/) {
-      $text .= format_content_table_html_replace($_);
+      $text .= _format_content_table_html_replace($_);
       $level++;
     } elsif ($_ eq '</table>') {
       if ($level == 0) {
-        format_content_warning ("opening table html tag recognition is failed");
-        $text .= format_content_table_html_replace($_);
+        _format_content_warning ("opening table html tag recognition is failed");
+        $text .= _format_content_table_html_replace($_);
       } else {
-        $text .= format_content_table_html_replace($_);
+        $text .= _format_content_table_html_replace($_);
         $level--;
       }
     } elsif ($level == 0) {
       $text .= $_;
     } else {
-      $text .= format_content_table_html_replace($_);
+      $text .= _format_content_table_html_replace($_);
     }
   }
 
   if ($level) {
-    format_content_warning("closing table html tag recognition is failed");
+    _format_content_warning("closing table html tag recognition is failed");
   }
 
   return $text;
@@ -283,6 +283,7 @@ sub replace_template {
   $text =~ s/\{\{conjug(ation)?\}\}/活用/g;
   $text =~ s/\{\{usage\}\}/用法/g;
   $text =~ s/\{\{ref\}\}/例文/g;
+  $text =~ s/\{\{prefix\}\}/接頭辞/g;
   $text =~ s/\{\{suffix\}\}/接尾辞/g;
   $text =~ s/\{\{alter\}\}/異表記・別形/g;
   $text =~ s/\{\{desc\}\}/諸言語への影響/g;
@@ -394,10 +395,6 @@ sub replace_template {
   # 音声は削除
   $text =~ s/\{\{audio\|[^\{\}]+\}\}//g;
   $text =~ s/\{\{音声\|[^\{\}]+\}\}//g;
-  # codepoint / unicode_code
-  $text =~ s/\{\{codepoint\}\}/'{{unicode_code|16進='.sprintf('%x',ord(substr($heading,0,1))).'}}'/eg;
-  $text =~ s/\{\{unicode_code\|16進 *= *([a-fA-F0-9]+)\|10進 *= *([0-9]+)\|?\}\}/* [[Unicode]]\n** 16進: $1\n** 10進: $2/g;
-  $text =~ s/\{\{unicode_code\|16進 *= *([a-fA-F0-9]+)\|?\}\}/"* [[Unicode]]\n** 16進: $1\n** 10進: ".hex($1)/eg;
   # top / bottom / trans-top / trans-bottom
   $text =~ s/\{\{top[0-9]*(?:\|[^\{\}]*)*\}\}//g;
   $text =~ s/\{\{bottom\}\}//g;
@@ -494,6 +491,16 @@ sub replace_template {
   $text =~ s!\{\{おくりがな2\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]+)\|?\}\}![[$1]]<sub>[[$4|$2]]</sub>$3!g;
   $text =~ s!\{\{おくりがな3\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]*)\|([^\|\{\}]+)\|([^\|\{\}]+)\|([^\|\{\}]*)\|([^\|\{\}]+)\}\}![[$1]]<sub>[[$7|$2]]</sub>$3\[[$4]]<sub>[[$7|$5]]</sub>$6!g;
   # ふりがな関連 )
+  # 文字情報 (
+  $text =~ s!\{\{mjmoji\|(\d+)\}\}!https://moji.or.jp/mojikibansearch/info?MJ%E6%96%87%E5%AD%97%E5%9B%B3%E5%BD%A2%E5%90%8D=MJ$1!g;
+  $text =~ s!\{\{文字コード\|jis=([0-9]+)-([0-9]+)-([0-9]+)\|mj=([^\|]+)\|gb=([0-9A-F]+)\|cns=([0-9]+)-([0-9A-F]+)\|big5=([0-9A-F]+)\|ksx=(1001|1002|1027-[0-9])-([0-9A-F]+)\}\}!"===文字コード===\n\{\{codepoint\}\}\n* JIS X 02xx: $1面$2区$3点\n* MJ文字図形: $4\n* [[GB18030]]: 0x$5\n* [[Big5]]: 0x$8\n* [[CNS|CNS 11643]]: $6面 0x$7\n* KS X $9: 0x$10\n"!eg;
+  $text =~ s!\{\{文字コード\|jis=([0-9]+)-([0-9]+)-([0-9]+)\|mj=([^\|]+)\|gb=([0-9A-F]+)\|cns=([0-9]+)-([0-9A-F]+)\|big5=([0-9A-F]+)\}\}!"===文字コード===\n\{\{codepoint\}\}\n* JIS X 02xx: $1面$2区$3点\n* MJ文字図形: $4\n* [[GB18030]]: 0x$5\n* [[Big5]]: 0x$8\n* [[CNS|CNS 11643]]: $6面 0x$7\n"!eg;
+  $text =~ s!\{\{文字コード\|jis=([0-9]+)-([0-9]+)-([0-9]+)\|mj=([^\|]+)\|gb=([0-9A-F]+)\|cns=([0-9]+)-([0-9A-F]+)\}\}!"===文字コード===\n\{\{codepoint\}\}\n* JIS X 02xx: $1面$2区$3点\n* MJ文字図形: $4\n* [[GB18030]]: 0x$5\n* [[CNS|CNS 11643]]: $6面 0x$7\n"!eg;
+  $text =~ s!\{\{文字コード\|jis=([0-9]+)-([0-9]+)-([0-9]+)\|mj=([^\|]+)\|gb=([0-9A-F]+)\|cns=([0-9]+)-([0-9A-F]+)\|ksx=(1001|1002|1027-[0-9])-([0-9A-F]+)\}\}!"===文字コード===\n\{\{codepoint\}\}\n* JIS X 02xx: $1面$2区$3点\n* MJ文字図形: $4\n* [[GB18030]]: 0x$5\n* [[CNS|CNS 11643]]: $6面 0x$7\n* KS X $8: 0x$9\n"!eg;
+  $text =~ s/\{\{codepoint\}\}/'{{unicode_code|16進='.sprintf('%X',ord(substr($heading,0,1))).'}}'/eg;
+  $text =~ s!\{\{unicode_code\|16進 *= *([a-fA-F0-9]+)\|10進 *= *([0-9]+)\|?\}\}!* [[Unicode]]: 16進 $1 / 10進 $2 / https://util.unicode.org/UnicodeJsps/character.jsp?a=$1!g;
+  $text =~ s!\{\{unicode_code\|16進 *= *([a-fA-F0-9]+)\|?\}\}!"* [[Unicode]]: 16進 $1 / 10進 ".hex($1)." / https://util.unicode.org/UnicodeJsps/character.jsp?a=$1"!eg;
+  # 文字情報 )
   # 漢字情報 (
   if ($heading =~ /^\p{sc=Han}{2}$/) {
     $text =~ s!\{\{ja-kanjitab\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|yomi=o[n2]?(?:,on?)?\|?\}\}!"===この単語の[[漢字]]===\n\*[[".substr($heading,0,1)."]]（$1）[[音読み]]\n\*[[".substr($heading,1,1)."]]（$2）[[音読み]]\n"!eg;
@@ -529,10 +536,9 @@ sub replace_template {
   return $text;
 }
 
-sub format_content_warning {
+sub _format_content_warning {
   my ($message)= @_;
-
-  print "$PROGRAM_NAME: warning: $message.\n";
+  print encode_utf8("$PROGRAM_NAME: warning: $message.\n");
 }
 
 sub uniq_array {
