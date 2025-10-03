@@ -941,6 +941,7 @@
 1996	gaiji/q16H.xbm
 1997	gaiji/q16H.xbm
 1998	gaiji/q16H.xbm
+1999	gaiji/q16H.xbm
 2003	gaiji/q16H.xbm
 2004	gaiji/q16H.xbm
 2005	gaiji/q16H.xbm
@@ -2170,6 +2171,7 @@
 4542	gaiji/q16H.xbm
 4548	gaiji/q16H.xbm
 4551	gaiji/q16H.xbm
+4570	gaiji/q16H.xbm
 4575	gaiji/q16H.xbm
 4582	gaiji/q16H.xbm
 4583	gaiji/q16H.xbm
@@ -3624,6 +3626,7 @@
 6681	gaiji/q16H.xbm
 6682	gaiji/q16H.xbm
 6683	gaiji/q16H.xbm
+6688	gaiji/q16H.xbm
 6689	gaiji/q16H.xbm
 6691	gaiji/q16H.xbm
 6694	gaiji/q16H.xbm
@@ -3665,6 +3668,7 @@
 6767	gaiji/q16H.xbm
 6768	gaiji/q16H.xbm
 6769	gaiji/q16H.xbm
+6770	gaiji/q16H.xbm
 6772	gaiji/q16H.xbm
 6773	gaiji/q16H.xbm
 6774	gaiji/q16H.xbm
@@ -3673,6 +3677,7 @@
 6914	gaiji/q16H.xbm
 6915	gaiji/q16H.xbm
 6916	gaiji/q16H.xbm
+6921	gaiji/q16H.xbm
 6925	gaiji/q16H.xbm
 6931	gaiji/q16H.xbm
 6935	gaiji/q16H.xbm
@@ -6046,6 +6051,7 @@
 43561	gaiji/q16H.xbm
 43565	gaiji/q16H.xbm
 43566	gaiji/q16H.xbm
+43590	gaiji/q16H.xbm
 43596	gaiji/q16H.xbm
 43600	gaiji/q16H.xbm
 43601	gaiji/q16H.xbm
@@ -6600,6 +6606,7 @@
 65680	gaiji/q16H.xbm
 65681	gaiji/q16H.xbm
 65686	gaiji/q16H.xbm
+65688	gaiji/q16H.xbm
 65690	gaiji/q16H.xbm
 65691	gaiji/q16H.xbm
 65693	gaiji/q16H.xbm
@@ -7311,6 +7318,7 @@
 68302	gaiji/q16H.xbm
 68303	gaiji/q16H.xbm
 68304	gaiji/q16H.xbm
+68307	gaiji/q16H.xbm
 68310	gaiji/q16H.xbm
 68311	gaiji/q16H.xbm
 68312	gaiji/q16H.xbm
@@ -7487,6 +7495,7 @@
 69494	gaiji/q16H.xbm
 69498	gaiji/q16H.xbm
 69500	gaiji/q16H.xbm
+69501	gaiji/q16H.xbm
 69502	gaiji/q16H.xbm
 69505	gaiji/q16H.xbm
 69632	gaiji/q16H.xbm
@@ -7496,6 +7505,7 @@
 69638	gaiji/q16H.xbm
 69639	gaiji/q16H.xbm
 69651	gaiji/q16H.xbm
+69652	gaiji/q16H.xbm
 69653	gaiji/q16H.xbm
 69656	gaiji/q16H.xbm
 69657	gaiji/q16H.xbm
@@ -7542,6 +7552,8 @@
 69743	gaiji/q16H.xbm
 69744	gaiji/q16H.xbm
 69773	gaiji/q16H.xbm
+69786	gaiji/q16H.xbm
+69790	gaiji/q16H.xbm
 69795	gaiji/q16H.xbm
 69801	gaiji/q16H.xbm
 69802	gaiji/q16H.xbm
@@ -7941,24 +7953,6 @@
 72330	gaiji/q16H.xbm
 72331	gaiji/q16H.xbm
 72332	gaiji/q16H.xbm
-72333	gaiji/q16H.xbm
-72334	gaiji/q16H.xbm
-72335	gaiji/q16H.xbm
-72336	gaiji/q16H.xbm
-72337	gaiji/q16H.xbm
-72338	gaiji/q16H.xbm
-72339	gaiji/q16H.xbm
-72340	gaiji/q16H.xbm
-72342	gaiji/q16H.xbm
-72343	gaiji/q16H.xbm
-72346	gaiji/q16H.xbm
-72347	gaiji/q16H.xbm
-72348	gaiji/q16H.xbm
-72350	gaiji/q16H.xbm
-72351	gaiji/q16H.xbm
-72352	gaiji/q16H.xbm
-72384	gaiji/q16H.xbm
-72718	gaiji/q16H.xbm
 73728	gaiji/q16H.xbm
 73737	gaiji/q16H.xbm
 73738	gaiji/q16H.xbm
@@ -8147,9 +8141,15 @@
 121091	gaiji/q16H.xbm
 121500	gaiji/q16H.xbm
 123584	gaiji/q16H.xbm
+125218	gaiji/q16H.xbm
+125220	gaiji/q16H.xbm
 125224	gaiji/q16H.xbm
 125226	gaiji/q16H.xbm
+125227	gaiji/q16H.xbm
 125229	gaiji/q16H.xbm
+125230	gaiji/q16H.xbm
+125236	gaiji/q16H.xbm
+125253	gaiji/q16H.xbm
 126999	gaiji/q16H.xbm
 127033	gaiji/q16H.xbm
 127462	gaiji/q16H.xbm
