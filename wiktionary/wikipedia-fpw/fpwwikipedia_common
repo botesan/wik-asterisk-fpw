@@ -425,12 +425,12 @@ sub replace_template {
   $text =~ s/\{\{(?:ja|zh)chars\}\}/'[['.substr($heading,0,1).']][['.substr($heading,1,1).']][['.substr($heading,2,1).']][['.substr($heading,3,1).']][['.substr($heading,4,1).']][['.substr($heading,5,1).']]'/eg if (length($heading) == 6);
   # wagokanji of
   $text =~ s/\{\{wagokanji of\|([^\|\{\}]+)\}\}/[[$1]]の漢字表記。/g;
-  # ja-headword系をまとめる（今わかっている分 ja-(noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)）
+  # ja-headword系をまとめる（今わかっている分 ja-(noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun|adjectival noun)）
   if ($heading =~ /^([\p{sc=Hiragana}\p{sc=Katakana}ー]+)$/) {
-    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)\}\}/$heading/g;
-    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1】/g;
-    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1・$2】/g;
-    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1・$2・$3】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun|adjectival noun)\}\}/$heading/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun|adjectival noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun|adjectival noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1・$2】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun|adjectival noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$heading【$1・$2・$3】/g;
   } elsif ($heading =~ /^.*\p{sc=Han}.*$/) {
     my $replaced;
     if (length($heading) == 1) {
@@ -449,10 +449,10 @@ sub replace_template {
       $replaced = '';
     }
     if ($replaced ne '') {
-      $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)\}\}/$replaced/g;
-      $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$replaced（$1）/g;
-      $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$replaced（$1 又は $2）/g;
-      $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$replaced（$1、$2 又は $3）/g;
+      $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun|adjectival noun)\}\}/$replaced/g;
+      $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun|adjectival noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$replaced（$1）/g;
+      $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun|adjectival noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$replaced（$1 又は $2）/g;
+      $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun|adjectival noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)\|((?:\[\[)?\p{sc=Hiragana}+(?:\]\])?)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/$replaced（$1、$2 又は $3）/g;
     }
   }
   # l m 系

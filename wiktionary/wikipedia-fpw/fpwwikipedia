@@ -303,13 +303,13 @@ sub register_content {
 
       # Write closing tags.
       for (; $written_level >= 1; $written_level--) {
-         if ($written_level == $sup_level) {
+        if ($written_level == $sup_level) {
           $$fpwtext->add_superscript_end()
               || register_content_error ($fpwtext, $heading, $content, $formatted_content);
-         } elsif ($written_level == $sub_level) {
+        } elsif ($written_level == $sub_level) {
           $$fpwtext->add_subscript_end()
               || register_content_error ($fpwtext, $heading, $content, $formatted_content);
-         }
+        }
       }
       $sup_level = 0;
       $sub_level = 0;
@@ -388,13 +388,13 @@ sub register_content {
           $written_level--;
         }
       } elsif ($sup_level && $tag_level == $sup_level) {
-         $tag_level--;
-         $sup_level = 0;
+        $tag_level--;
+        $sup_level = 0;
         if ($tag_level < $written_level) {
-           $$fpwtext->add_superscript_end()
-               || register_content_error ($fpwtext, $heading, $content, $formatted_content);
+          $$fpwtext->add_superscript_end()
+              || register_content_error ($fpwtext, $heading, $content, $formatted_content);
           $written_level--;
-         }
+        }
       } elsif ($tag_level && $tags[$tag_level - 1] eq 'S') {
         $tag_level--;
         $written_level = ($written_level > $tag_level) ? $tag_level : $written_level;
@@ -624,7 +624,7 @@ sub format_content {
   $text =~ s/^([*\#:]+:)/'<IND>' x length($1)/mge;
 
   $text =~ s/^(<IND>.*)$/$1<BR>/mg;
- 
+
   # Format links to other articles
   if ($fpwwikipedia_conf{'enable_reference'}) {
     $text =~ s/\[\[([^\[\]\|\#]+?)(?:\#[^\[\]\|\#]+)?\|(([^\[\]\|]|\[[^\[\]]|\][^\]])+)\]\]/<R $1>$2<\/R>/g;
@@ -634,7 +634,7 @@ sub format_content {
     $text =~ s/\[\[([^\[\]\|\#]+?)(?:\#[^\[\]\|\#]+)?\]\]/$1/g;
   }
 
-   # Format links to self page.
+  # Format links to self page.
   $text =~ s/\[\[\#[^\[\]\|\#]+\|(([^\[\]\|]|\[[^\[\]]|\][^\]])+)\]\]/$1/g;
   $text =~ s/\[\[\#([^\[\]\|\#]+)\]\]/$1/g;
 
@@ -704,19 +704,19 @@ sub expand_search_entry {
     if ($key =~ /^.*\p{sc=Han}.*$/) {
       my $kana = '[\p{sc=Hiragana}\p{sc=Katakana}ー]+';
       my $kana_comma_hifun = '[\p{sc=Hiragana}\p{sc=Katakana}ー,-]+';
-      if ($text =~ /\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:\[\[)?($kana)(?:\]\])?(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/) {
+      if ($text =~ /\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun|adjectival noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:\[\[)?($kana)(?:\]\])?(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/) {
         push(@keys, $1);
 ##### M.ITO ( DEBUG #####
         # print encode_utf8("push key 1: $1\n");
 ##### M.ITO ) DEBUG #####
       }
-      if ($text =~ /\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:\[\[)?($kana)(?:\]\])?\|(?:\[\[)?($kana)(?:\]\])?(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/) {
+      if ($text =~ /\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun|adjectival noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:\[\[)?($kana)(?:\]\])?\|(?:\[\[)?($kana)(?:\]\])?(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/) {
         push(@keys, ($1, $2));
 ##### M.ITO ( DEBUG #####
         # print encode_utf8("push key 1: $1, $2\n");
 ##### M.ITO ) DEBUG #####
       }
-      if ($text =~ /\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:\[\[)?($kana)(?:\]\])?\|(?:\[\[)?($kana)(?:\]\])?\|(?:\[\[)?($kana)(?:\]\])?(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/) {
+      if ($text =~ /\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|wagokanji|name|proper noun|adjectival noun)(?:\|[a-zA-Z]+=[^\|\{\}]+)*\|(?:\[\[)?($kana)(?:\]\])?\|(?:\[\[)?($kana)(?:\]\])?\|(?:\[\[)?($kana)(?:\]\])?(?:\|[a-zA-Z]+=[^\|\{\}]+)*\}\}/) {
         push(@keys, ($1, $2, $3));
 ##### M.ITO ( DEBUG #####
         # print encode_utf8("push key 1: $1, $2, $3\n");
