@@ -14,6 +14,8 @@ require v5.6;
 use utf8;
 use warnings;
 
+use DBI;
+
 use Getopt::Long;
 use English;
 use FileHandle;
@@ -37,151 +39,167 @@ use vars qw($entry_headings $hash_module);
 
 require "fpwwikipedia_common";
 
- MAIN: {
-   my $time = time;
+MAIN: {
+  my $time = time;
 #
 # コマンド行を解析する。
 #
-   my $wikipedia_filename;
+  my $wikipedia_filename;
 
-   if (!GetOptions('workdir=s' => \$work_directory, 
-                   'srcfile=s' => \$wikipedia_filename,
-                   'hash_module=s' => \$hash_module)) {
-     exit 1;
-   }
+  if (!GetOptions('workdir=s' => \$work_directory, 
+                  'srcfile=s' => \$wikipedia_filename,
+                  'hash_module=s' => \$hash_module)) {
+    exit 1;
+  }
 
 #
 # fpwutils を初期化する。
 #
-   initialize_fpwutils();
+  initialize_fpwutils();
 
 #
 # これから出力するファイルがすでにあれば、削除する。
 #
-   unlink($color_graphic_file_name);
-   unlink($color_graphic_tag_file_name);
+  unlink($color_graphic_file_name);
+  unlink($color_graphic_tag_file_name);
 
-   $graphic = FreePWING::ColorGraphic->new();
+  $graphic = FreePWING::ColorGraphic->new();
 
 #
 # 生成側ファイルを開く。
 #
-   if (!$graphic->open($color_graphic_file_name,
-                       $color_graphic_tag_file_name)) {
-     die "$PROGRAM_NAME: " . $graphic->error_message() . "\n";
-   }
+  if (!$graphic->open($color_graphic_file_name,
+                      $color_graphic_tag_file_name)) {
+    die "$PROGRAM_NAME: " . $graphic->error_message() . "\n";
+  }
 
-   if($fpwwikipedia_conf{'enable_math'} == 0) {
-     goto FINISH;
-   }
+  if($fpwwikipedia_conf{'enable_math'} == 0) {
+    goto FINISH;
+  }
 
 #
 # 入力ファイルを開く。
 #
-   get_entry_headings('entries');
+  get_entry_headings('entries');
 
-   if (not -e $wikipedia_filename) {
-     die("$PROGRAM_NAME: '$wikipedia_filename' does not exist.");
-   }
+  # if (not -e $wikipedia_filename) {
+  #   die("$PROGRAM_NAME: '$wikipedia_filename' does not exist.");
+  # }
 
-   my $xml = FileHandle->new();
-   if (!$xml->open($wikipedia_filename, 'r')) {
-     die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $wikipedia_filename\n";
-   }
+  # my $xml = FileHandle->new();
+  # if (!$xml->open($wikipedia_filename, 'r')) {
+  #   die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $wikipedia_filename\n";
+  # }
 
-   my ($text, $heading);
-   my ($text_position, $heading_position);
+  my $id;
+  my ($text, $heading);
+  my ($text_position, $heading_position);
 
-   if(verbose_mode ()) {
-     print "Skipping headers: $fpwwikipedia_conf{'skip_heading'}\n";
-     print "Skipping contents: $fpwwikipedia_conf{'skip_content'}\n";
-     print "Selecting headers: $fpwwikipedia_conf{'select_heading'}\n";
-     print "Selecting contents: $fpwwikipedia_conf{'select_content'}\n";
-   }
+  if(verbose_mode ()) {
+    print "Skipping headers: $fpwwikipedia_conf{'skip_heading'}\n";
+    print "Skipping contents: $fpwwikipedia_conf{'skip_content'}\n";
+    print "Selecting headers: $fpwwikipedia_conf{'select_heading'}\n";
+    print "Selecting contents: $fpwwikipedia_conf{'select_content'}\n";
+  }
 
-   my $entry_count = 0;
-   my @maths;
-   my %math;
+  my $entry_count = 0;
+  my @maths;
+  my %math;
 
- PARSER: for (;;) {
-     $_ = '';
-     while (!(/<page>/)) {
-       $_ = $xml->getline();
-       if (!defined($_)) {
-         last PARSER;
-       }
-     }
+  my $dbh = DBI->connect("dbi:SQLite:dbname=wikipedia.sqlite3", "", "", {
+      RaiseError     => 0,
+      PrintError     => 1,
+      AutoCommit     => 1,
+      sqlite_unicode => 1,
+    }) ||  die "$PROGRAM_NAME: ".$DBI::errstr."\n";
+  my $sth = $dbh->prepare("select id, title, page from dictionary order by title, id")
+    ||  die "$PROGRAM_NAME: prepare error. ".$DBI::errstr."\n";
+  $sth->execute() ||  die "$PROGRAM_NAME: execute error. ".$DBI::errstr."\n";
 
-     $text = decode_utf8($_);
-     
-     while (!(/<\/page>/)) {
-       $_ = $xml->getline();
-       if (!defined($_)) {
-         die "$PROGRAM_NAME: Unexpected file end\n";
-       }
-       $text .= decode_utf8($_);
-     }
+PARSER: while (my $row = $sth->fetch) {
+    # $_ = '';
+    # while (!(/<page>/)) {
+    #   $_ = $xml->getline();
+    #   if (!defined($_)) {
+    #     last PARSER;
+    #   }
+    # }
 
-     $text =~ /<title>([^<]+)<\/title>/;
-     $heading = $1;
+    # $text = decode_utf8($_);
+    
+    # while (!(/<\/page>/)) {
+    #   $_ = $xml->getline();
+    #   if (!defined($_)) {
+    #     die "$PROGRAM_NAME: Unexpected file end\n";
+    #   }
+    #   $text .= decode_utf8($_);
+    # }
 
-     # Skipping entries (for debug)
-     $page_count++;
-     if ($page_count <= $fpwwikipedia_conf{'skip_count'}) {
-       next;
-     }
+    # $text =~ /<title>([^<]+)<\/title>/;
+    # $heading = $1;
+    $id = $row->[0];
+    $heading = $row->[1];
+    $text = $row->[2];
 
-     if (!defined($entry_headings->get($heading))) {
-       if (verbose_mode()) {
-         print "Skipping page: $heading.\n";
-       }
-       next;
-     }
+    # Skipping entries (for debug)
+    $page_count++;
+    if ($page_count <= $fpwwikipedia_conf{'skip_count'}) {
+      next;
+    }
 
-     print encode_utf8("Entry: $page_count; $heading\n");
+    if (!defined($entry_headings->get($heading))) {
+      if (verbose_mode()) {
+        print "Skipping page: $heading.\n";
+      }
+      next;
+    }
 
-     # main functions.
+    print encode_utf8("Entry: $page_count; $id; $heading\n");
 
-     @maths = get_maths($heading, $text);
+    # main functions.
 
-     foreach $_ (@maths) {
-       if (!defined($math{$_})) {
-         $math{$_} = 1;
-         # print "math:".$_."\n";
+    @maths = get_maths($heading, $text);
 
-         if (!$graphic->add_binary("math_$_", get_image(pack("H*", $_)))) {
-           die "$PROGRAM_NAME: " . $graphic->error_message() . "\n";
-         }
-       }
-     }
+    foreach $_ (@maths) {
+      if (!defined($math{$_})) {
+        $math{$_} = 1;
+        # print "math:".$_."\n";
 
-     # Check number of entries (for debug)
-     $entry_count++;
-     if ($fpwwikipedia_conf{'entry_count'} > 0
-         && $entry_count >= $fpwwikipedia_conf{'entry_count'}) {
-       last;
-     }
-   }
+        if (!$graphic->add_binary("math_$_", get_image(pack("H*", $_)))) {
+          die "$PROGRAM_NAME: " . $graphic->error_message() . "\n";
+        }
+      }
+    }
 
-   $entry_headings->close();
-   $xml->close();
+    # Check number of entries (for debug)
+    $entry_count++;
+    if ($fpwwikipedia_conf{'entry_count'} > 0
+        && $entry_count >= $fpwwikipedia_conf{'entry_count'}) {
+      last;
+    }
+  }
 
-   printf (encode_utf8("%6d formulas ard registered.\n"), $graphic->entry_count());
+  $sth->finish;
+  $dbh->disconnect;
 
- FINISH:
-   if (!$graphic->close()) {
-     die "$PROGRAM_NAME: " . $graphic->error_message() . "\n";
-   }
+  $entry_headings->close();
+  # $xml->close();
 
-   printf(encode_utf8("$PROGRAM_NAME: Elapsed time     : %8dsec.\n"), time - $time);
-   printf(encode_utf8("$PROGRAM_NAME: Number of entries: %8d\n"), $entry_count);
+  printf (encode_utf8("%6d formulas ard registered.\n"), $graphic->entry_count());
+
+FINISH:
+  if (!$graphic->close()) {
+    die "$PROGRAM_NAME: " . $graphic->error_message() . "\n";
+  }
+
+  printf(encode_utf8("$PROGRAM_NAME: Elapsed time     : %8dsec.\n"), time - $time);
+  printf(encode_utf8("$PROGRAM_NAME: Number of entries: %8d\n"), $entry_count);
 
 #
 # fpwutils の後始末をする。
 #
-   finalize_fpwutils();
-
-   exit 0;
+  finalize_fpwutils();
+  exit 0;
 }
 
 

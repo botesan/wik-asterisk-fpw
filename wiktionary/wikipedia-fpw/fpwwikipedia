@@ -15,6 +15,8 @@ use utf8;
 use strict;
 use warnings;
 
+use DBI;
+
 use Getopt::Long;
 use English;
 use FileHandle;
@@ -33,7 +35,7 @@ use vars qw($entry_headings $hash_module);
 
 require "fpwwikipedia_common";
 
- MAIN: {
+MAIN: {
   my $time = time;
   my $page_count = 0;
   my $entry_count = 0;
@@ -59,17 +61,18 @@ require "fpwwikipedia_common";
 
   read_gaiji_chars();
 
-  my $wikipedia_filename = $ARGV[0];
+  # my $wikipedia_filename = $ARGV[0];
 
-  if (not -e $wikipedia_filename) {
-    die("$PROGRAM_NAME: '$wikipedia_filename' does not exist.");
-  }
+  # if (not -e $wikipedia_filename) {
+  #   die("$PROGRAM_NAME: '$wikipedia_filename' does not exist.");
+  # }
 
-  my $xml = FileHandle->new();
-  if (!$xml->open("$wikipedia_filename", 'r')) {
-    die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $wikipedia_filename\n";
-  }
+  # my $xml = FileHandle->new();
+  # if (!$xml->open("$wikipedia_filename", 'r')) {
+  #   die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $wikipedia_filename\n";
+  # }
 
+  my $id;
   my ($text, $heading);
   my ($text_position, $heading_position);
 
@@ -80,27 +83,40 @@ require "fpwwikipedia_common";
     print "Selecting contents: $fpwwikipedia_conf{'select_content'}\n";
   }
 
-  PARSER: for (;;) {
-    $_ = '';
-    while (!(/<page>/)) {
-      $_ = $xml->getline();
-      if (!defined($_)) {
-        last PARSER;
-      }
-    }
+  my $dbh = DBI->connect("dbi:SQLite:dbname=wikipedia.sqlite3", "", "", {
+      RaiseError     => 0,
+      PrintError     => 1,
+      AutoCommit     => 1,
+      sqlite_unicode => 1,
+    }) ||  die "$PROGRAM_NAME: ".$DBI::errstr."\n";
+  my $sth = $dbh->prepare("select id, title, page from dictionary order by title, id")
+    ||  die "$PROGRAM_NAME: prepare error. ".$DBI::errstr."\n";
+  $sth->execute() ||  die "$PROGRAM_NAME: execute error. ".$DBI::errstr."\n";
 
-    $text = decode_utf8($_);
+  PARSER: while (my $row = $sth->fetch) {
+    # $_ = '';
+    # while (!(/<page>/)) {
+    #   $_ = $xml->getline();
+    #   if (!defined($_)) {
+    #     last PARSER;
+    #   }
+    # }
+
+    # $text = decode_utf8($_);
     
-    while (!(/<\/page>/)) {
-      $_ = $xml->getline();
-      if (!defined($_)) {
-        die "$PROGRAM_NAME: Unexpected file end\n";
-      }
-      $text .= decode_utf8($_);
-    }
+    # while (!(/<\/page>/)) {
+    #   $_ = $xml->getline();
+    #   if (!defined($_)) {
+    #     die "$PROGRAM_NAME: Unexpected file end\n";
+    #   }
+    #   $text .= decode_utf8($_);
+    # }
 
-    $text =~ /<title>([^<]+)<\/title>/;
-    $heading = $1;
+    # $text =~ /<title>([^<]+)<\/title>/;
+    # $heading = $1;
+    $id = $row->[0];
+    $heading = $row->[1];
+    $text = $row->[2];
 
     # Skipping entries (for debug)
     $page_count++;
@@ -144,7 +160,7 @@ require "fpwwikipedia_common";
 #     }
 
 
-    print encode_utf8("Entry: $page_count; $heading\n");
+    print encode_utf8("Entry: $page_count; $id; $heading\n");
     $heading_position = register_heading(\$fpwheading, $heading);
     $text_position = register_content(\$fpwtext, $heading, $text);
     my @headings = expand_search_entry($heading, $text);
@@ -158,8 +174,11 @@ require "fpwwikipedia_common";
     }
   }
 
+  $sth->finish;
+  $dbh->disconnect;
+
   $entry_headings->close();
-  $xml->close();
+  # $xml->close();
 
   make_gaiji_map();
 

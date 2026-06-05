@@ -1,9 +1,10 @@
 FROM debian:bullseye-slim
 
 RUN apt-get update
-RUN apt-get install -y bash zip zlib1g-dev bzip2 wget
+RUN apt-get install -y bash zip zlib1g-dev bzip2 wget time
 RUN apt-get install -y make gcc
 RUN apt-get install -y perlmagick
+RUN apt-get install -y libdbd-sqlite3-perl
 
 WORKDIR /usr/src/app
 RUN wget ftp://ftp.sra.co.jp/pub/misc/freepwing/freepwing-1.6.1.tar.bz2

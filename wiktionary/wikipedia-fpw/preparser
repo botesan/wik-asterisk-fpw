@@ -15,6 +15,8 @@ use utf8;
 use strict;
 use warnings;
 
+use DBI;
+
 use Getopt::Long;
 use English;
 use FileHandle;
@@ -23,140 +25,156 @@ use Encode qw/decode_utf8 encode_utf8/;
 use vars qw(%fpwwikipedia_conf);
 require "wikipedia-fpw.conf";
 
+MAIN: {
+  my $time = time;
+  my $page_count = 0;
+  my $entry_count = 0;
 
- MAIN: {
-   my $time = time;
-   my $page_count = 0;
-   my $entry_count = 0;
+  my $id;
+  my $text;
+  my $heading;
+  my ($headings, $redirects);
+  my $hash_module;
 
-   my $text;
-   my $heading;
-   my ($headings, $redirects);
-   my $hash_module;
+  if (!GetOptions('hash_module=s' => \$hash_module)) {
+    exit 1;
+  }
 
-   if (!GetOptions('hash_module=s' => \$hash_module)) {
-     exit 1;
-   }
+  if ($hash_module eq 'BDB') {
+    require WikipediaFpw::Hash::BDB;
+    $headings = WikipediaFpw::Hash::BDB->new();
+    $redirects = WikipediaFpw::Hash::BDB->new();
+  } elsif ($hash_module eq 'GDBM') {
+    require WikipediaFpw::Hash::GDBM;
+    $headings = WikipediaFpw::Hash::GDBM->new();
+    $redirects = WikipediaFpw::Hash::GDBM->new();
+  } else {
+    require WikipediaFpw::Hash::Hash;
+    $headings = WikipediaFpw::Hash::Hash->new();
+    $redirects = WikipediaFpw::Hash::Hash->new();
+  }
 
-   if ($hash_module eq 'BDB') {
-     require WikipediaFpw::Hash::BDB;
-     $headings = WikipediaFpw::Hash::BDB->new();
-     $redirects = WikipediaFpw::Hash::BDB->new();
-   } elsif ($hash_module eq 'GDBM') {
-     require WikipediaFpw::Hash::GDBM;
-     $headings = WikipediaFpw::Hash::GDBM->new();
-     $redirects = WikipediaFpw::Hash::GDBM->new();
-   } else {
-     require WikipediaFpw::Hash::Hash;
-     $headings = WikipediaFpw::Hash::Hash->new();
-     $redirects = WikipediaFpw::Hash::Hash->new();
-   }
+  $headings->open('headings.db');
+  $redirects->open('redirects.db');
 
-   $headings->open('headings.db');
-   $redirects->open('redirects.db');
+  my $wikipedia_filename = $ARGV[0];
+  my $output_filename = $ARGV[1];
 
-   my $wikipedia_filename = $ARGV[0];
-   my $output_filename = $ARGV[1];
+  if (not -e $wikipedia_filename) {
+    die("$PROGRAM_NAME: '$wikipedia_filename' does not exist.");
+  }
 
-   if (not -e $wikipedia_filename) {
-     die("$PROGRAM_NAME: '$wikipedia_filename' does not exist.");
-   }
+  my $xml = FileHandle->new();
+  if (!$xml->open("$wikipedia_filename", 'r')) {
+    die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $wikipedia_filename\n";
+  }
 
-   my $xml = FileHandle->new();
-   if (!$xml->open("$wikipedia_filename", 'r')) {
-     die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $wikipedia_filename\n";
-   }
+  my $output = FileHandle->new();
+  if (!$output->open("$output_filename", 'w')) {
+    die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $output_filename\n";
+  }
 
-   my $output = FileHandle->new();
-   if (!$output->open("$output_filename", 'w')) {
-     die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $output_filename\n";
-   }
+  if(verbose_mode ()) {
+    print "Skipping headers: $fpwwikipedia_conf{'skip_heading'}\n";
+    print "Skipping contents: $fpwwikipedia_conf{'skip_content'}\n";
+    print "Selecting headers: $fpwwikipedia_conf{'select_heading'}\n";
+    print "Selecting contents: $fpwwikipedia_conf{'select_content'}\n";
+  }
 
-   if(verbose_mode ()) {
-     print "Skipping headers: $fpwwikipedia_conf{'skip_heading'}\n";
-     print "Skipping contents: $fpwwikipedia_conf{'skip_content'}\n";
-     print "Selecting headers: $fpwwikipedia_conf{'select_heading'}\n";
-     print "Selecting contents: $fpwwikipedia_conf{'select_content'}\n";
-   }
+  my $dbh = DBI->connect("dbi:SQLite:dbname=wikipedia.sqlite3", "", "", {
+      RaiseError     => 0,
+      PrintError     => 1,
+      AutoCommit     => 1,
+      sqlite_unicode => 1,
+    }) ||  die "$PROGRAM_NAME: ".$DBI::errstr."\n";
+  my $sth = $dbh->prepare("select id, title, page from dictionary order by title, id")
+    ||  die "$PROGRAM_NAME: prepare error. ".$DBI::errstr."\n";
+  $sth->execute() ||  die "$PROGRAM_NAME: execute error. ".$DBI::errstr."\n";
 
-   PARSER: for (;;) {
-     $_ = '';
-     while (!(/<page>/)) {
-       $_ = $xml->getline();
-       if (!defined($_)) {
-         last PARSER;
-       }
-     }
+  PARSER: while (my $row = $sth->fetch) {
+    # $_ = '';
+    # while (!(/<page>/)) {
+    #   $_ = $xml->getline();
+    #   if (!defined($_)) {
+    #     last PARSER;
+    #   }
+    # }
 
-     $text = decode_utf8($_);
-     
-     while (!(/<\/page>/)) {
-       $_ = $xml->getline();
-       if (!defined($_)) {
-         die "$PROGRAM_NAME: Unexpected file end\n";
-       }
-       $text .= decode_utf8($_);
-     }
+    # $text = decode_utf8($_);
+    
+    # while (!(/<\/page>/)) {
+    #   $_ = $xml->getline();
+    #   if (!defined($_)) {
+    #     die "$PROGRAM_NAME: Unexpected file end\n";
+    #   }
+    #   $text .= decode_utf8($_);
+    # }
 
-     $text =~ /<title>([^<]+)<\/title>/;
-     $heading = $1;
+    # $text =~ /<title>([^<]+)<\/title>/;
+    # $heading = $1;
+    $id = $row->[0];
+    $heading = $row->[1];
+    $text = $row->[2];
 
-     # Skipping entries (for debug)
-     $page_count++;
+    # Skipping entries (for debug)
+    $page_count++;
 
-     if ((!(debug_mode()))
-         && $page_count <= $fpwwikipedia_conf{'skip_count'}) {
-       next;
-     }
+    if ((!(debug_mode()))
+        && $page_count <= $fpwwikipedia_conf{'skip_count'}) {
+      next;
+    }
 
-     if (is_skipped_heading($heading)){
-       if (verbose_mode()) {
-         print "Skipping heading: $heading.\n";
-       }
-       next;
-     }
-     
-     if ($_ = is_redirect_page($text)) {
-       print encode_utf8("Redirect: $page_count; $heading.\n");
+    if (is_skipped_heading($heading)){
+      if (verbose_mode()) {
+        print "Skipping heading: $heading.\n";
+      }
+      next;
+    }
+    
+    if ($_ = is_redirect_page($text)) {
+      print encode_utf8("Redirect: $page_count; $heading.\n");
 
-       if (defined($redirects->get($_))) {
-         $redirects->put($_, $redirects->get($_) . "\t$heading");
-       } else {
-         $redirects->put($_, $heading);
-       }
-       next;
-     } elsif (is_skipped_content($text)){
-       if (verbose_mode()) {
-         print encode_utf8("Skipping content: $heading.\n");
-       }
-       next;
-     } else {
-       print encode_utf8("Entry: $page_count; $heading.\n");
+      if (defined($redirects->get($_))) {
+        $redirects->put($_, $redirects->get($_) . "\t$heading");
+      } else {
+        $redirects->put($_, $heading);
+      }
+      next;
+    } elsif (is_skipped_content($text)){
+      if (verbose_mode()) {
+        print encode_utf8("Skipping content: $heading.\n");
+      }
+      next;
+    } else {
+      print encode_utf8("Entry: $page_count; $id; $heading.\n");
 
-       $headings->put($heading, 1);
-     }
+      $headings->put($heading, 1);
+    }
 
-     # Check number of entries (for debug)
-     $entry_count++;
-     if ((!debug_mode())
-         && $fpwwikipedia_conf{'entry_count'}
-         && $entry_count >= $fpwwikipedia_conf{'entry_count'}) {
-       last;
-     }
-   }
+    # Check number of entries (for debug)
+    $entry_count++;
+    if ((!debug_mode())
+        && $fpwwikipedia_conf{'entry_count'}
+        && $entry_count >= $fpwwikipedia_conf{'entry_count'}) {
+      last;
+    }
+  }
 
-   while ($heading = each(%{$headings->{'hash'}})) {
-     $text = $heading;
-     if (defined($redirects->get($heading))) {
-       $output->print(encode_utf8("$heading\t" . $redirects->get($heading) . "\n"));
-     } else {
-       $output->print(encode_utf8("$heading\n"));
-     }
-   }
+  while ($heading = each(%{$headings->{'hash'}})) {
+    $text = $heading;
+    if (defined($redirects->get($heading))) {
+      $output->print(encode_utf8("$heading\t" . $redirects->get($heading) . "\n"));
+    } else {
+      $output->print(encode_utf8("$heading\n"));
+    }
+  }
 
-   $headings->close();
-   $redirects->close();
+  $sth->finish;
+  $dbh->disconnect;
 
-   printf(encode_utf8("$PROGRAM_NAME: Elapsed time     : %8dsec.\n"), time - $time);
-   printf(encode_utf8("$PROGRAM_NAME: Number of entries: %8d\n"), $entry_count);
+  $headings->close();
+  $redirects->close();
+
+  printf(encode_utf8("$PROGRAM_NAME: Elapsed time     : %8dsec.\n"), time - $time);
+  printf(encode_utf8("$PROGRAM_NAME: Number of entries: %8d\n"), $entry_count);
 }

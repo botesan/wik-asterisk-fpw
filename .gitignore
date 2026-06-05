@@ -6,6 +6,7 @@
 *.bz2
 *.zip
 *.dep
+*.sqlite3*
 # directories
 work/
 WIKTION/

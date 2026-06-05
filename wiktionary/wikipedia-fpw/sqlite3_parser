@@ -1,0 +1,109 @@
+#                                                         -*- Perl -*-
+# Copyright (c) 2007, 2008  Kazuhiro Ito
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+require v5.6;
+use utf8;
+use strict;
+use warnings;
+
+use DBI;
+
+use Getopt::Long;
+use English;
+use FileHandle;
+use Encode qw/decode_utf8 encode_utf8/;
+
+use vars qw(%fpwwikipedia_conf);
+require "wikipedia-fpw.conf";
+
+MAIN: {
+  my $time = time;
+  my $page_count = 0;
+  my $entry_count = 0;
+
+  my $text;
+  my $heading;
+
+  my $wikipedia_filename = $ARGV[0];
+
+  if (not -e $wikipedia_filename) {
+    die("$PROGRAM_NAME: '$wikipedia_filename' does not exist.");
+  }
+
+  my $xml = FileHandle->new();
+  if (!$xml->open("$wikipedia_filename", 'r')) {
+    die "$PROGRAM_NAME: Failed to open the file, $ERRNO: $wikipedia_filename\n";
+  }
+
+  if(verbose_mode ()) {
+    print "Skipping headers: $fpwwikipedia_conf{'skip_heading'}\n";
+    print "Skipping contents: $fpwwikipedia_conf{'skip_content'}\n";
+    print "Selecting headers: $fpwwikipedia_conf{'select_heading'}\n";
+    print "Selecting contents: $fpwwikipedia_conf{'select_content'}\n";
+  }
+
+  my $dbh = DBI->connect("dbi:SQLite:dbname=wikipedia.sqlite3", "", "", {
+      RaiseError     => 0,
+      PrintError     => 1,
+      AutoCommit     => 1,
+      sqlite_unicode => 1,
+    }) ||  die "$PROGRAM_NAME: ".$DBI::errstr."\n";
+  $dbh->do("create table dictionary(id integer primary key autoincrement, title text not null, page text not null);")
+    ||  die "$PROGRAM_NAME: create table error. ".$DBI::errstr."\n";
+  $dbh->do("create index dictionary_title on dictionary(title);")
+    ||  die "$PROGRAM_NAME: create table error. ".$DBI::errstr."\n";
+  my $sth = $dbh->prepare("insert into dictionary(title, page) values(?,?);")
+    ||  die "$PROGRAM_NAME: prepare error. ".$DBI::errstr."\n";
+  $dbh->begin_work;
+
+  PARSER: for (;;) {
+    $_ = '';
+    while (!(/<page>/)) {
+      $_ = $xml->getline();
+      if (!defined($_)) {
+        last PARSER;
+      }
+    }
+
+    $text = decode_utf8($_);
+
+    while (!(/<\/page>/)) {
+      $_ = $xml->getline();
+      if (!defined($_)) {
+        die "$PROGRAM_NAME: Unexpected file end\n";
+      }
+      $text .= decode_utf8($_);
+    }
+
+    $text =~ /<title>([^<]+)<\/title>/;
+    $heading = $1;
+    $sth->execute($heading, $text) ||  die "$PROGRAM_NAME: execute error. ".$DBI::errstr."\n";
+
+    $page_count++;
+    print encode_utf8("Entry: $page_count; $heading.\n");
+
+    # Check number of entries (for debug)
+    $entry_count++;
+    if ((!debug_mode())
+        && $fpwwikipedia_conf{'entry_count'}
+        && $entry_count >= $fpwwikipedia_conf{'entry_count'}) {
+      last;
+    }
+  }
+
+  $sth->finish;
+  $dbh->commit;
+  $dbh->disconnect;
+
+  printf(encode_utf8("$PROGRAM_NAME: Elapsed time     : %8dsec.\n"), time - $time);
+  printf(encode_utf8("$PROGRAM_NAME: Number of entries: %8d\n"), $entry_count);
+}
