@@ -5,11 +5,13 @@ DOWNLOAD_FILE := jawiktionary-latest-pages-articles.xml.bz2
 XML_FILE := ${FPW_DIR}/wikipedia.xml
 DIC_ZIP_FILE := ${FPW_DIR}/wikipedia-fpw.zip
 DIC_DIR := WIKTION
+PARSE_DEP = ${FPW_DIR}/work/parse.dep
 
 ERROR_LOG := ${MAKEFILE_DIR}/error.txt
 TRACE_LOG := ${MAKEFILE_DIR}/log.txt
 
 ${DIC_DIR}: ${DIC_ZIP_FILE}
+	rm -rf ${DIC_DIR}
 	unzip ${DIC_ZIP_FILE}
 	cp -p ${FPW_DIR}/work/gaiji.map ${DIC_DIR}/${DIC_DIR}.map
 	(cd ${DIC_DIR}; LD_LIBRARY_PATH=/usr/local/lib ebzip -z -l 5 -n; cd ..)
@@ -33,5 +35,10 @@ clean:
 clean-xml:
 	rm -f ${DOWNLOAD_FILE}
 	rm -f ${XML_FILE}
+
+clean-parse:
+	rm -rf ${DIC_DIR}
+	rm -f  ${DIC_ZIP_FILE}
+	rm -f  ${PARSE_DEP}
 
 download: clean-xml clean ${XML_FILE}
