@@ -175,6 +175,7 @@ sub replace_template {
   $text =~ s/\{\{(?:[a-z]+-)?DEFAULTSORT(?:\|[^\{\}]+)?\}\}//g;
   $text =~ s/\{\{WiktionaryPage\}\}//g;
   $text =~ s/\{\{stub(?:\|[^\{\}]+)?\}\}//g;
+  $text =~ s/\{\{漢字\}\}//g;
   # リンク関連
   $text =~ s/\{\{[Ww]ikipedia(\|[^\{\}]+)?\}\}//g;
   $text =~ s/\{\{wp\|([^\|\{\}]+)\}\}//g;
@@ -440,6 +441,7 @@ sub replace_template {
   $text =~ s/\{\{context(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|(?:武器|weapon)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/(武器) /g;
   $text =~ s/\{\{context(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|(?:肉|meat)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/(肉) /g;
   $text =~ s/\{\{context(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|(?:医療|healthcare)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/(医療) /g;
+  $text =~ s/\{\{context(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|(?:草|grass)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/(草) /g;
   ## 仮対応（日本語をそのまま処理）
   $text =~ s/\{\{context(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|([\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}ー]{2,})(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/($1) /g;
   $text =~ s/\{\{context(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|([\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}ー]{2,})\|([\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}ー]{2,})(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/($1,$2) /g;
@@ -484,13 +486,23 @@ sub replace_template {
   # ja-headword系をまとめる（今わかっている分 ja-(noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)）
   if ($heading =~ /^([\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+)$/) {
     $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)\|head=((?:\[\[[^\]]+\]\]|[^\|\{\}]+)+)\|*(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$1/g;
-    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)\|head=((?:\[\[[^\]]+\]\]|[^\|\{\}]+)+)\|*\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$1【$2】/g;
-    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}]+)\|head=((?:\[\[[^\]]+\]\]|[^\|\{\}]+)+)\}\}/$2【$1】/g;
     $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)\|*\}\}/$heading/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)\|head=((?:\[\[[^\]]+\]\]|[^\|\{\}]+)+)\|*\|([^=\|\{\}\[\]]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$1【[[$2]]】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}\[\]]+)\|head=((?:\[\[[^\]]+\]\]|[^\|\{\}]+)+)\}\}/$2【[[$1]]】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}\[\]]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$heading【[[$1]]】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}\[\]]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$heading【[[$1]]・[[$2]]】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$heading【[[$1]]・[[$2]]・[[$3]]】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$heading【[[$1]]・[[$2]]・[[$3]]・[[$4]]】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$heading【[[$1]]・[[$2]]・[[$3]]・[[$4]]・[[$5]]】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)\|([^=\|\{\}\[\]]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$heading【[[$1]]・[[$2]]・[[$3]]・[[$4]]・[[$5]]・[[$6]]】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)\|head=((?:\[\[[^\]]+\]\]|[^\|\{\}]+)+)\|*\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$1【$2】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}]+])\|head=((?:\[\[[^\]]+\]\]|[^\|\{\}]+)+)\}\}/$2【$1】/g;
     $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$heading【$1】/g;
     $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$heading【$1・$2】/g;
     $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$heading【$1・$2・$3】/g;
     $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$heading【$1・$2・$3・$4】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$heading【$1・$2・$3・$4・$5】/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)\|([^=\|\{\}]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$heading【$1・$2・$3・$4・$5・$6】/g;
   } elsif ($heading =~ /^.*\p{sc=Han}.*|[a-zA-Z0-9-]+$/) {
     my $replaced = $heading;
     if ($heading =~ /\p{sc=Han}/) {
@@ -513,6 +525,8 @@ sub replace_template {
     $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$replaced（$1 又は $2）/g;
     $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$replaced（$1、$2 又は $3）/g;
     $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$replaced（$1、$2、$3 又は $4）/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$replaced（$1、$2、$3、$4 又は $5）/g;
+    $text =~ s/\{\{ja-(?:noun|noun-suru|verb|verb-suru|adv|adv-suru|adj|wagokanji|name|proper noun|adjectival noun|idiom)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\|*\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)\|((?:\[\[)?[\p{sc=Hiragana}\p{sc=Katakana}ー・＝]+(?:\]\])?)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/$replaced（$1、$2、$3、$4、$5 又は $6）/g;
   }
   # l m 系
   $text =~ s/\{\{[lm]\|[a-z-]+\|([^\|\[\]\{\}]+)\|([^=\|\[\]\{\}]+)\|([^=\|\[\]\{\}]+)\|tr=([^=\|\[\]\{\}]+)(?:\|[a-zA-Z]+=(?:\[\[[^\]]+\]\]|[^\|\{\}]+)*)*\}\}/[[$1|$2]]（$4）「$3」/g;
@@ -528,6 +542,12 @@ sub replace_template {
   $text =~ s/\{\{m\}\}/男性/g;
   $text =~ s/\{\{f\}\}/女性/g;
   $text =~ s/\{\{n\}\}/中性/g;
+  # 和製英語
+  $text =~ s!\{\{和製英語\}\}![[和製英語]]!g;
+  # affix
+  $text =~ s/\{\{affix\|[a-z]+\|([\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}ー]+)-?(?:\|pos[12]=接[頭尾]辞)?\|-?([\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}ー]+)(?:\|pos[12]=接[頭尾]辞)?(?:\|sort=[^\|\[\]\{\}]+)?\}\}/[[$1]] + [[$2]]/g;
+  $text =~ s/\{\{affix\|[a-z]+\|(?:\[\[)?(-?[a-zA-ZäöüßÄÖÜẞàèéìòùÀÈÉÌÒÙàâçéèêëîïôûùüÿæœÀÂÇÉÈÊËÎÏÔÛÙÜŸÆŒáéíóúýćǵńŕśźÁÉÍÓÚÝĆǴŃŔŚŹ]+-?)(?:\]\])?\|(?:\[\[)?(-?[a-zA-ZäöüßÄÖÜẞàèéìòùÀÈÉÌÒÙàâçéèêëîïôûùüÿæœÀÂÇÉÈÊËÎÏÔÛÙÜŸÆŒáéíóúýćǵńŕśźÁÉÍÓÚÝĆǴŃŔŚŹ]+-?)(?:\]\])?(?:\|nocat=1)?\}\}/[[$1]] + [[$2]]/g;
+  $text =~ s/\{\{affix\|[a-z]+\|(?:\[\[)?(-?[a-zA-ZäöüßÄÖÜẞàèéìòùÀÈÉÌÒÙàâçéèêëîïôûùüÿæœÀÂÇÉÈÊËÎÏÔÛÙÜŸÆŒáéíóúýćǵńŕśźÁÉÍÓÚÝĆǴŃŔŚŹ]+-?)(?:\]\])?\|(?:\[\[)?(-?[a-zA-ZäöüßÄÖÜẞàèéìòùÀÈÉÌÒÙàâçéèêëîïôûùüÿæœÀÂÇÉÈÊËÎÏÔÛÙÜŸÆŒáéíóúýćǵńŕśźÁÉÍÓÚÝĆǴŃŔŚŹ]+-?)(?:\]\])?\|(?:\[\[)?(-?[a-zA-ZäöüßÄÖÜẞàèéìòùÀÈÉÌÒÙàâçéèêëîïôûùüÿæœÀÂÇÉÈÊËÎÏÔÛÙÜŸÆŒáéíóúýćǵńŕśźÁÉÍÓÚÝĆǴŃŔŚŹ]+-?)(?:\]\])?(?:\|nocat=1)?\}\}/[[$1]] + [[$2]] + [[$3]]/g;
   # 参照関連 (
   $text =~ s/\{\{see ?also\}\}/参照/g;
   $text =~ s/\{\{see\|([^\{\}]+)\}\}/{{also|$1}}/g;

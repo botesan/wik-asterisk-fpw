@@ -12,6 +12,7 @@ work/
 WIKTION/
 # source files
 wikipedia.xml
+wikipedia.xml-rss.xml
 # made files
 gai16h
 gai16f
