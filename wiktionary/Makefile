@@ -25,6 +25,8 @@ ${XML_FILE}:
 	bzip2 -d ${DOWNLOAD_FILE}
 	mv jawiktionary-latest-pages-articles.xml ${XML_FILE}
 	rm -f ${DIC_ZIP_FILE}
+	wget https://dumps.wikimedia.org/jawiktionary/latest/${DOWNLOAD_FILE}-rss.xml
+	mv ${DOWNLOAD_FILE}-rss.xml ${XML_FILE}-rss.xml
 
 archive:
 	(cd ${FPW_DIR}; PERL5LIB=. fpwmake archive; cd ..)
@@ -33,8 +35,8 @@ clean:
 	(cd ${FPW_DIR}; PERL5LIB=. fpwmake clean; cd ..)
 
 clean-xml:
-	rm -f ${DOWNLOAD_FILE}
-	rm -f ${XML_FILE}
+	rm -f ${DOWNLOAD_FILE} ${DOWNLOAD_FILE}-rss.xml
+	rm -f ${XML_FILE} ${XML_FILE}-rss.xml
 
 clean-parse:
 	rm -rf ${DIC_DIR}
